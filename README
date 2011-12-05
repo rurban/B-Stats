@@ -1,0 +1,53 @@
+B::Stats(3)           User Contributed Perl Documentation          B::Stats(3)
+
+
+
+NNAAMMEE
+       B::Stats - optree statistics
+
+SSYYNNOOPPSSIISS
+         perl -MB::Stats myprog.pl
+         perl -MO=Stats myprog.pl
+         perl -MO=Stats[,OPTIONS] myprog.pl
+
+DDEESSCCRRIIPPTTIIOONN
+       Print statistics for all generated ops.
+
+       static analysis at compile-time, static analysis at end-time to include
+       all runtime added modules, and dynamic analysis at run-time.
+
+OOPPTTIIOONNSS
+       -llogfile
+           Print output only to this file. Default: STDERR
+
+       -s _s_t_a_t_i_c
+           Only do static analysis at compile-time. This does not include all
+           run-time require packages.
+
+       -e _e_n_d
+           Only do static analysis at end-time. This is includes all run-time
+           require packages.  This calculates the heap space for the optree.
+
+       -r _r_u_n
+           Only do dynamic run-time analysis of all actually visited ops,
+           similar to a profiler.
+
+       -a _a_l_l _(_d_e_f_a_u_l_t_)
+           -ser: static compile-time and end-time and dynamic run-time.
+
+       -f _f_r_a_g_m_e_n_t_a_t_i_o_n
+           Calculates the optree _f_r_a_g_m_e_n_t_a_t_i_o_n. 0.0 is perfect, 1.0 is very
+           bad.
+
+       -u _s_u_m_m_a_r_y
+           Short summary only, no details per op.
+
+       -f<op,...> _f_i_l_t_e_r
+           Filter for ops and opclasses. Only calculate the given ops, resp.
+           op class.
+
+             perl -MO=Stats,-fLOGOP,COP,concat myprog.pl
+
+
+
+perl v5.14.2                      2011-12-05                       B::Stats(3)
