@@ -2,7 +2,6 @@ use strict;
 use warnings;
 
 use ExtUtils::MakeMaker 6.17; # perl-5.6.2
-use Config;
 
 my %WriteMakefileArgs =
   (
