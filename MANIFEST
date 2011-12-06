@@ -1,6 +1,8 @@
 .gitignore
 lib/B/Stats.pm
 t/compile.t
+t/options.t
+t/table.t
 t/test.pl
 Makefile.PL
 MANIFEST

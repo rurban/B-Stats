@@ -42,6 +42,10 @@ Single ops can be called multiple times.
 
 Same as -c,-e,-r: static compile-time and end-time and dynamic run-time.
 
+=item -t I<table>
+
+Tabular list of -c, -e and -r results.
+
 =item -u I<summary>
 
 Short summary only, no class and more details per op.
@@ -82,6 +86,7 @@ use XSLoader;
 # use Opcodes;
 our ($static, @runtime, $compiled);
 my (%opt, $nops, $rops, @all_subs, $frag);
+my ($c_count, $e_count, $r_count);
 BEGIN {
   @runtime = ();
 }
@@ -91,9 +96,9 @@ sub import {
   $DB::single = 1 if defined &DB::deep;
 print STDERR "opt: ",@_,"; ";
   for (@_) { # XXX switch bundling without Getopt bloat
-    if (/^-?([acerxFu])$/) { $opt{$1} = 1; }
+    if (/^-?([acerxtFu])$/) { $opt{$1} = 1; }
   }
-  # -x, -ffilter and -llog not yet
+  # -ffilter and -llog not yet
   $opt{a} = 1 if !$opt{c} and !$opt{e} and !$opt{r}; # default
   $opt{c} = $opt{e} = $opt{r} = 1 if $opt{a};
 warn "%opt: ",keys %opt,"\n";
@@ -174,18 +179,18 @@ sub compile {
 }
 
 sub output_runtime {
-  my $rt = {};
+  $r_count = {};
   my $i = 0;
   require Opcodes; # Opcodes->import(qw(opname opclass));
   for (@runtime) {
     if (my $count = $_->[0]) {
-      $rt->{name}->{ Opcodes::opname($i) } += $count;
-      $rt->{class}->{ Opcodes::opclass($i) } += $count;
+      $r_count->{name}->{ Opcodes::opname($i) } += $count;
+      $r_count->{class}->{ Opcodes::opclass($i) } += $count;
       $rops += $count;
     }
     $i++;
   }
-  output($rt, $rops, 'dynamic run-time');
+  output($r_count, $rops, 'dynamic run-time');
 }
 
 sub output {
@@ -201,13 +206,14 @@ sub output {
     close IN;
   }
   print STDERR "\nB::Stats $name:\nfiles=$files\tlines=$lines\tops=$ops\n";
+  return if $opt{t} and $opt{u};
+
   print STDERR "\nop name:\n";
   for (sort { $count->{name}->{$b} <=> $count->{name}->{$a} }
        keys %{$count->{name}}) {
     my $l = length $_;
     print STDERR $_, " " x (10-$l), "\t", $count->{name}->{$_}, "\n";
   }
-
   unless ($opt{u}) {
     print STDERR "\nop class:\n";
     for (sort { $count->{class}->{$b} <=> $count->{class}->{$a} }
@@ -218,22 +224,51 @@ sub output {
   }
 }
 
+sub output_table {
+  my ($c, $e, $r) = @_;
+  format STDERR_TOP =
+
+B::Stats table:
+@<<<<<<<<<<	@>>>>	@>>>>	@>>>>
+"",             "-c",   "-e",   "-r"
+.
+  write STDERR;
+  format STDERR =
+@<<<<<<<<<<	@>>>>	@>>>>	@>>>>
+$_,$c_count->{name}->{$_},$e_count->{name}->{$_},$r_count->{name}->{$_}
+.
+  # print STDERR "\n        \t-c\t-e\t-r\n";
+  for (sort { $e_count->{name}->{$b} <=> $e_count->{name}->{$a} }
+       keys %{$e_count->{name}}) {
+    #my $l = length $_;
+    write STDERR;
+    #print STDERR $_, " " x (10-$l),
+    #  "\t", $c_count->{name}->{$_}, 
+    #  "\t", $e_count->{name}->{$_},
+    #  "\t", $r_count->{name}->{$_},
+    #  "\n";
+  }
+}
+
 # Called not via -MO=Stats, rather -MB::Stats
 CHECK {
   compile->() if !$compiled and $opt{c};
 }
 
 END {
+  $c_count = $static;
   if ($opt{e}) {
     $nops = 0;
     $static = {};
     walkops(\&count_op);
     output($static, $nops, 'static end-time');
+    $e_count = $static;
   }
   output_runtime() if $opt{r};
+  output_table($c_count, $e_count, $r_count) if $opt{t};
 }
 
-# still fails
+# XS still fails
 # XSLoader::load 'B::Stats', $VERSION;
 
 1;

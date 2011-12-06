@@ -14,7 +14,7 @@ unlike( $c, qr/^B::Stats static end-time:/m,   "-MB::Stats=-c,-u => !e" );
 unlike( $c, qr/^B::Stats dynamic run-time:/m,  "-MB::Stats=-c,-u => !r" );
 unlike(   $c, qr/^op class:/m,                 "-MB::Stats,-c,-u => u" );
 
-like( $c, qr/^nextstate\s+[1-9]\d*/m, "nextstate > 0" );
+like( $c, qr/^nextstate\s+[1-9]\d+$/m, "nextstate > 0" );
 
 $c = qx{ $X -Mblib -MB::Stats=-r,-u t/test.pl $redir };
 unlike( $c, qr/^B::Stats static compile-time:/m, "-MB::Stats=-c,-u => !c" );
