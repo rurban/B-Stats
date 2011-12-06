@@ -1,4 +1,8 @@
+.gitignore
 lib/B/Stats.pm
+t/compile.t
+t/test.pl
 Makefile.PL
 MANIFEST
 README
+Stats.xs

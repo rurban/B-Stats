@@ -1,5 +1,5 @@
 package B::Stats;
-our $VERSION = '0.01_20111205';
+our $VERSION = '0.01_20111206';
 
 =head1 NAME
 
@@ -17,7 +17,7 @@ Print statistics for all generated ops.
 
 static analysis at compile-time,
 static analysis at end-time to include all runtime added modules,
-and dynamic analysis at run-time.
+and dynamic analysis at run-time, as with a profiler.
 
 =head1 OPTIONS
 
@@ -46,11 +46,11 @@ Same as -c,-e,-r: static compile-time and end-time and dynamic run-time.
 
 Short summary only, no class and more details per op.
 
-=item -lF<logfile>
+=item -F I<Files>
 
-Print output only to this file. Default: STDERR
+Prints included file names
 
-=item -f I<fragmentation>
+=item -x I<fragmentation>
 
 Calculates the optree I<fragmentation>. 0.0 is perfect, 1.0 is very bad.
 
@@ -63,6 +63,10 @@ Filter for op names and classes. Only calculate the given ops, resp. op class.
 
   perl -MB::Stats,-fLOGOP,COP,concat myprog.pl
 
+=item -lF<logfile>
+
+Print output only to this file. Default: STDERR
+
 =back
 
 =cut
@@ -70,34 +74,29 @@ Filter for op names and classes. Only calculate the given ops, resp. op class.
 # Goal:
 # use less footprint;
 # B includes 14 files and 3821 lines. TODO: add it to our XS
-use B qw(main_root class OPf_KIDS walksymtable);
+use B qw(main_root OPf_KIDS walksymtable);
 # XSLoader adds 0 files and 0 lines, already with B
 use XSLoader;
 # Opcodes-0.10 adds 6 files and 5303-3821 lines: Carp, AutoLoader, subs
 # Opcodes-0.11 adds 2 files and 4141-3821 lines: subs
 # use Opcodes;
-our ($static, @runtime, $compiled, @bad_stashes);
+our ($static, @runtime, $compiled);
 my (%opt, $nops, $rops, @all_subs, $frag);
 BEGIN {
   @runtime = ();
-  @bad_stashes = ('B::Stats');
-  # $opt{c} = 1;
-  # $opt{e} = 0;
-  # $opt{F} = 1; # Files
-  # $opt{r} = 1; # run-time XS TODO
 }
 
 # check options
 sub import {
   $DB::single = 1 if defined &DB::deep;
-  print STDERR "opt: ",@_,"; ";
-  for (@_) {
-    if (/^-?([acerFu])$/) { $opt{$1} = 1; }
+print STDERR "opt: ",@_,"; ";
+  for (@_) { # XXX switch bundling without Getopt bloat
+    if (/^-?([acerxFu])$/) { $opt{$1} = 1; }
   }
-  # -ffilter and -llog not yet
+  # -x, -ffilter and -llog not yet
   $opt{a} = 1 if !$opt{c} and !$opt{e} and !$opt{r}; # default
   $opt{c} = $opt{e} = $opt{r} = 1 if $opt{a};
-  warn "%opt: ",keys %opt,"\n";
+warn "%opt: ",keys %opt,"\n";
 }
 
 # static
@@ -106,7 +105,7 @@ sub count_op {
   $nops++; # count also null ops
   if ($$op) {
     $static->{name}->{$op->name}++;
-    $static->{class}->{class($op)}++;
+    $static->{class}->{B::class($op)}++;
   }
 }
 
@@ -122,7 +121,7 @@ sub B::GV::_mypush_starts {
       and $cv->PADLIST->ARRAY->can("ARRAY"))
   {
     push @all_subs, { root => $_->ROOT, start => $_->START}
-      for grep { class($_) eq "CV" } $cv->PADLIST->ARRAY->ARRAY;
+      for grep { B::class($_) eq "CV" } $cv->PADLIST->ARRAY->ARRAY;
   }
   return unless ${$cv->START} and ${$cv->ROOT};
   $starts{$name} = $cv->START;
@@ -136,12 +135,12 @@ sub walkops {
   walksymtable(\%main::,
 	       '_mypush_starts',
 	       sub {
-		 return if scalar grep {$_[0] eq $_."::"} @bad_stashes;
+		 return if scalar grep {$_[0] eq $_."::"} ('B::Stats');
 		 1;
 	       }, # Do not eat our own children!
 	       '');
   push @all_subs, { root => $_->ROOT, start => $_->START}
-    for grep { class($_) eq "CV" } B::main_cv->PADLIST->ARRAY->ARRAY;
+    for grep { B::class($_) eq "CV" } B::main_cv->PADLIST->ARRAY->ARRAY;
   for $sub (keys %roots) {
     walkoptree_simple($roots{$sub}, $callback, $data);
   }
@@ -177,11 +176,11 @@ sub compile {
 sub output_runtime {
   my $rt = {};
   my $i = 0;
-  require Opcodes; Opcodes->import(qw(opname opclass));
+  require Opcodes; # Opcodes->import(qw(opname opclass));
   for (@runtime) {
     if (my $count = $_->[0]) {
-      $rt->{name}->{ opname($i) } += $count;
-      $rt->{class}->{ opclass($i) } += $count;
+      $rt->{name}->{ Opcodes::opname($i) } += $count;
+      $rt->{class}->{ Opcodes::opclass($i) } += $count;
       $rops += $count;
     }
     $i++;
@@ -203,14 +202,16 @@ sub output {
   }
   print STDERR "\nB::Stats $name:\nfiles=$files\tlines=$lines\tops=$ops\n";
   print STDERR "\nop name:\n";
-  for (sort { $count->{name}->{$b} <=> $count->{name}->{$a} } keys %{$count->{name}}) {
+  for (sort { $count->{name}->{$b} <=> $count->{name}->{$a} }
+       keys %{$count->{name}}) {
     my $l = length $_;
     print STDERR $_, " " x (10-$l), "\t", $count->{name}->{$_}, "\n";
   }
 
   unless ($opt{u}) {
     print STDERR "\nop class:\n";
-    for (sort { $count->{class}->{$b} <=> $count->{class}->{$a} } keys %{$count->{class}}) {
+    for (sort { $count->{class}->{$b} <=> $count->{class}->{$a} }
+	 keys %{$count->{class}}) {
       my $l = length $_;
       print STDERR $_, " " x (10-$l), "\t", $count->{class}->{$_}, "\n";
     }

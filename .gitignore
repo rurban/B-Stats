@@ -1,0 +1,10 @@
+*~
+MYMETA.json
+MYMETA.yml
+Makefile
+Makefile.old
+Stats.bs
+Stats.c
+Stats.o
+blib/
+pm_to_blib

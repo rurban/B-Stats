@@ -13,8 +13,6 @@ unlike( $c, qr/^B::Stats static end-time:/m, "-MO=Stats" );
 
 $c = qx{ $X -Mblib -MB::Stats t/test.pl $redir };
 like( $c, qr/^B::Stats static compile-time:/m, "-MB::Stats -c" );
-like( $c, qr/^B::Stats static end-time:/m, "-MB::Stats -e" );
-SKIP: {
-  skip "no runtime XS yet", 1;
-  like( $c, qr/^B::Stats dynamic run-time:/m, "-MB::Stats -r" );
-}
+like( $c, qr/^B::Stats static end-time:/m,     "-MB::Stats -e" );
+like( $c, qr/^B::Stats dynamic run-time:/m,    "-MB::Stats -r" );
+
