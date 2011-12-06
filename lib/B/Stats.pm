@@ -71,11 +71,12 @@ use XSLoader;
 use Opcodes;
 our ($static, @runtime, $compiled);
 my (%opt, $nops, $rops, @all_subs);
+@runtime = ();
 
 XSLoader::load 'B::Stats', $VERSION;
 
 # $opt{u} = 1; # TODO opts
-$opt{c} = $opt{e} = 1;
+$opt{c} = $opt{e} = $opt{r} = 1;
 
 # static
 sub count_op {
