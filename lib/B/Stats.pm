@@ -195,7 +195,7 @@ sub output {
 
 # not via -MO=Stats, rather -MB::Stats
 CHECK {
-  compile->() if $opt{r} and !$compiled;
+  compile->() if !$compiled and $opt{c};
 }
 
 END {
