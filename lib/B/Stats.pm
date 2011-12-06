@@ -66,17 +66,37 @@ Filter for op names and classes. Only calculate the given ops, resp. op class.
 
 =cut
 
+# Goal:
+# use less footprint;
+# B includes 14 files and 3821 lines. TODO: add it to our XS
 use B qw(main_root class OPf_KIDS walksymtable);
+# XSLoader adds 0 files and 0 lines, already with B
 use XSLoader;
-use Opcodes;
+# Opcodes-0.10 adds 6 files and 5303-3821 lines: Carp, AutoLoader, subs
+# Opcodes-0.11 adds 2 files and 4141-3821 lines: subs
+# use Opcodes;
 our ($static, @runtime, $compiled, @bad_stashes);
 my (%opt, $nops, $rops, @all_subs, $frag);
 BEGIN {
   @runtime = ();
   @bad_stashes = ('B::Stats');
-  $opt{c} = $opt{e} = 1;
-  # $opt{u} = 1; # TODO opts
+  # $opt{c} = 1;
+  # $opt{e} = 0;
+  # $opt{F} = 1; # Files
   # $opt{r} = 1; # run-time XS TODO
+}
+
+# check options
+sub import {
+  $DB::single = 1 if defined &DB::deep;
+  print STDERR "opt: ",@_,"; ";
+  for (@_) {
+    if (/^-?([acerFu])$/) { $opt{$1} = 1; }
+  }
+  # -ffilter and -llog not yet
+  $opt{a} = 1 if !$opt{c} and !$opt{e} and !$opt{r}; # default
+  $opt{c} = $opt{e} = $opt{r} = 1 if $opt{a};
+  warn "%opt: ",keys %opt,"\n";
 }
 
 # static
@@ -141,10 +161,11 @@ sub walkoptree_simple {
   }
 }
 
-# static at CHECK time. triggered by -MO=Stats
+# static at CHECK time. triggered by -MO=Stats,-OPTS
 sub compile {
-  $DB::single = 1 if defined &DB::deep;
+  import(@_); # check options via O
   $compiled++;
+  $opt{c} = 1;
   return sub {
     $nops = 0;
     walkops(\&count_op);
@@ -155,9 +176,10 @@ sub compile {
 sub output_runtime {
   my $rt = {};
   my $i = 0;
+  require Opcodes; Opcodes->import(qw(opname opclass));
   for (@runtime) {
     if (my $count = $_->[0]) {
-      $rt->{name}->{ opcode($i) } += $count;
+      $rt->{name}->{ opname($i) } += $count;
       $rt->{class}->{ opclass($i) } += $count;
       $rops += $count;
     }
@@ -172,6 +194,7 @@ sub output {
   my $files = scalar keys %INC;
   my $lines = 0;
   for (values %INC) {
+    print STDERR $_,"\n" if $opt{F};
     open IN, "<", "$_";
     # Todo: skip pod?
     while (<IN>) { chomp; s/#.*//; next if not length $_; $lines++; };
@@ -193,7 +216,7 @@ sub output {
   }
 }
 
-# not via -MO=Stats, rather -MB::Stats
+# Called not via -MO=Stats, rather -MB::Stats
 CHECK {
   compile->() if !$compiled and $opt{c};
 }
