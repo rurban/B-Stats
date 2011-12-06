@@ -1,6 +1,6 @@
 #!perl
 
-use Test::More tests => 4;
+use Test::More tests => 5;
 
 {
   my $X = $^X =~ m/\s/ ? qq{"$^X"} : $^X;
@@ -15,4 +15,5 @@ use Test::More tests => 4;
   $c = qx{ $X -Mblib -MB::Stats t/test.pl $redir };
   like( $c, qr/^B::Stats static compile-time:/m, "-MB::Stats -c" );
   like( $c, qr/^B::Stats static end-time:/m, "-MB::Stats -e" );
+  like( $c, qr/^B::Stats dynamic run-time:/m, "-MB::Stats -r" );
 }

@@ -69,13 +69,14 @@ Filter for op names and classes. Only calculate the given ops, resp. op class.
 use B qw(main_root class OPf_KIDS walksymtable);
 use XSLoader;
 use Opcodes;
-our ($static, @runtime, $compiled);
+our ($static, @runtime, $compiled, @bad_stashes);
 my (%opt, $nops, $rops, @all_subs, $frag);
-@runtime = ();
-our @bad_stashes = ('B::Stats');
-
-# $opt{u} = 1; # TODO opts
-$opt{c} = $opt{e} = $opt{r} = 1;
+BEGIN {
+  @runtime = ();
+  @bad_stashes = ('B::Stats');
+  # $opt{u} = 1; # TODO opts
+  $opt{c} = $opt{e} = $opt{r} = 1;
+}
 
 # static
 sub count_op {
@@ -88,7 +89,6 @@ sub count_op {
 }
 
 # from B::Utils
-# our ($file, $line);
 our $sub;
 
 sub B::GV::_mypush_starts {
@@ -131,8 +131,6 @@ sub walkops {
 
 sub walkoptree_simple {
   my ($op, $callback, $data) = @_;
-  #do_stat($op);
-  #($file, $line) = ($op->file, $op->line) if $op->isa("B::COP");
   $callback->($op,$data);
   if ($$op && ($op->flags & OPf_KIDS)) {
     my $kid;
@@ -174,7 +172,7 @@ sub output {
   my $lines = 0;
   for (values %INC) {
     open IN, "<", "$_";
-    # Todo: skip pod
+    # Todo: skip pod?
     while (<IN>) { chomp; s/#.*//; next if not length $_; $lines++; };
     close IN;
   }
@@ -209,6 +207,6 @@ END {
   output_runtime() if $opt{r};
 }
 
-XSLoader::load 'B::Stats', $VERSION;
+# XSLoader::load 'B::Stats', $VERSION;
 
 1;
