@@ -70,10 +70,9 @@ use B qw(main_root class OPf_KIDS walksymtable);
 use XSLoader;
 use Opcodes;
 our ($static, @runtime, $compiled);
-my (%opt, $nops, $rops, @all_subs);
+my (%opt, $nops, $rops, @all_subs, $frag);
 @runtime = ();
-
-XSLoader::load 'B::Stats', $VERSION;
+our @bad_stashes = ('B::Stats');
 
 # $opt{u} = 1; # TODO opts
 $opt{c} = $opt{e} = $opt{r} = 1;
@@ -87,16 +86,9 @@ sub count_op {
     $static->{class}->{class($op)}++;
   }
 }
-# dynamic: instrument each op. 
-# XXX DB::DB calls into dbstate only
-#sub DB::DB {
-#  my ($file,$line) = (caller)[1,2];
-#  # return unless $file eq $0;
-#  $runtime->{$file}->{$line}++;
-#}
 
 # from B::Utils
-our ($file, $line);
+# our ($file, $line);
 our $sub;
 
 sub B::GV::_mypush_starts {
@@ -152,13 +144,12 @@ sub walkoptree_simple {
 
 # static at CHECK time. triggered by -MO=Stats
 sub compile {
-  $DB::single=1 if defined &DB::deep;
+  $DB::single = 1 if defined &DB::deep;
   $compiled++;
   return sub {
     $nops = 0;
     walkops(\&count_op);
     output($static, $nops, 'static compile-time');
-    $static = {};
   }
 }
 
@@ -166,8 +157,7 @@ sub output_runtime {
   my $rt = {};
   my $i = 0;
   for (@runtime) {
-    if ($_->[0]) {
-      my $count = $_->[1];
+    if (my $count = $_->[0]) {
       $rt->{name}->{ opcode($i) } += $count;
       $rt->{class}->{ opclass($i) } += $count;
       $rops += $count;
@@ -178,7 +168,7 @@ sub output_runtime {
 }
 
 sub output {
-  my ($static, $ops, $name) = @_;
+  my ($count, $ops, $name) = @_;
 
   my $files = scalar keys %INC;
   my $lines = 0;
@@ -190,16 +180,16 @@ sub output {
   }
   print STDERR "\nB::Stats $name:\nfiles=$files\tlines=$lines\tops=$ops\n";
   print STDERR "\nop name:\n";
-  for (sort { $static->{name}->{$b} <=> $static->{name}->{$a} } keys %{$static->{name}}) {
+  for (sort { $count->{name}->{$b} <=> $count->{name}->{$a} } keys %{$count->{name}}) {
     my $l = length $_;
-    print STDERR $_, " " x (10-$l), "\t", $static->{name}->{$_}, "\n";
+    print STDERR $_, " " x (10-$l), "\t", $count->{name}->{$_}, "\n";
   }
 
   unless ($opt{u}) {
     print STDERR "\nop class:\n";
-    for (sort { $static->{class}->{$b} <=> $static->{class}->{$a} } keys %{$static->{class}}) {
+    for (sort { $count->{class}->{$b} <=> $count->{class}->{$a} } keys %{$count->{class}}) {
       my $l = length $_;
-      print STDERR $_, " " x (10-$l), "\t", $static->{class}->{$_}, "\n";
+      print STDERR $_, " " x (10-$l), "\t", $count->{class}->{$_}, "\n";
     }
   }
 }
@@ -212,10 +202,13 @@ CHECK {
 END {
   if ($opt{e}) {
     $nops = 0;
+    $static = {};
     walkops(\&count_op);
     output($static, $nops, 'static end-time');
   }
   output_runtime() if $opt{r};
 }
+
+XSLoader::load 'B::Stats', $VERSION;
 
 1;
