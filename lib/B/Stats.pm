@@ -74,8 +74,9 @@ my (%opt, $nops, $rops, @all_subs, $frag);
 BEGIN {
   @runtime = ();
   @bad_stashes = ('B::Stats');
+  $opt{c} = $opt{e} = 1;
   # $opt{u} = 1; # TODO opts
-  $opt{c} = $opt{e} = $opt{r} = 1;
+  # $opt{r} = 1; # run-time XS TODO
 }
 
 # static
@@ -207,6 +208,7 @@ END {
   output_runtime() if $opt{r};
 }
 
+# still fails
 # XSLoader::load 'B::Stats', $VERSION;
 
 1;

@@ -11,7 +11,7 @@ my %WriteMakefileArgs =
    "AUTHOR" 		=> "Reini Urban <rurban\@cpan.org>",
    "LICENSE" 		=> "perl",
    "PREREQ_PM" =>  {
-		    'Opcodes' 	=> 0.10,
+		    'Opcodes' 	=> "0.10",
 		    'B' 	=> 0,	# 5.6.2 has no version, 5.8.1 has 1.02
 		   },
    "SIGN" => 1,
