@@ -28,6 +28,13 @@ my %WriteMakefileArgs =
 
 WriteMakefile(%WriteMakefileArgs);
 
+sub MY::depend {
+  "
+README : lib/B/Stats.pm
+	pod2text lib/B/Stats.pm > README
+";
+}
+
 # Local Variables:
 #   mode: cperl
 #   cperl-indent-level: 4
