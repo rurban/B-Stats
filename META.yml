@@ -1,5 +1,5 @@
 ---
-abstract: 'optree statistics'
+abstract: 'print optree statistics'
 author:
   - 'Reini Urban <rurban@cpan.org>'
 build_requires:
@@ -19,7 +19,7 @@ no_index:
     - inc
 requires:
   B: 0
-  Opcodes: 0.10
+  Opcodes: 0.11
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/rurban/B-Stats.git

@@ -7,7 +7,7 @@ my %WriteMakefileArgs =
   (
    "NAME" 		=> "B::Stats",
    "VERSION_FROM" 	=> "lib/B/Stats.pm",
-   "ABSTRACT" 		=> "optree statistics",
+   "ABSTRACT"		=> "print optree statistics",
    "AUTHOR" 		=> "Reini Urban <rurban\@cpan.org>",
    "LICENSE" 		=> "perl",
    "PREREQ_PM" =>  {

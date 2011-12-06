@@ -1,6 +1,6 @@
 #!perl
 
-use Test::More tests => 14;
+use Test::More tests => 15;
 
 my $X = $^X =~ m/\s/ ? qq{"$^X"} : $^X;
 # fake home for cpan-testers
@@ -26,5 +26,5 @@ unlike( $c, qr/^op class:/m,                   "-MB::Stats,-t,-u => u" );
 like( $c, qr/^B::Stats table:/m,               "-MB::Stats,-t,-u => t" );
 
 unlike( $c, qr/^nextstate\s+[1-9]\d+$/m, "nextstate in -c" );
-like  ( $c, qr/^nextstate\s+[1-9]\d+\s+[1-9]\d+\s+/m, "nextstate in table" );
-
+like  ( $c, qr/^nextstate\s+[1-9]\d+\s+[1-9]\d+/m, "nextstate in table (c+e)" );
+like  ( $c, qr/^nextstate\s+[1-9]\d+\s+[1-9]\d+\s+[1-9]\d+/m, "nextstate in table (c+e+r)" );

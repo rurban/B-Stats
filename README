@@ -1,5 +1,5 @@
 NAME
-    B::Stats - optree statistics
+    B::Stats - print optree statistics
 
 SYNOPSIS
       perl -MB::Stats myprog.pl # all
@@ -10,7 +10,12 @@ DESCRIPTION
     Print statistics for all generated ops.
 
     static analysis at compile-time, static analysis at end-time to include
-    all runtime added modules, and dynamic analysis at run-time.
+    all runtime added modules, and dynamic analysis at run-time, as with a
+    profiler.
+
+    The purpose is to help you in your goal:
+
+        no bloat;
 
 OPTIONS
     -c *static*
@@ -30,22 +35,47 @@ OPTIONS
         Same as -c,-e,-r: static compile-time and end-time and dynamic
         run-time.
 
+    -t *table*
+        Tabular list of -c, -e and -r results.
+
     -u *summary*
-        Short summary only, no class and more details per op.
+        Short summary only, no op class. With -t only the final table(s).
 
-    -llogfile
-        Print output only to this file. Default: STDERR
+    -F *Files*
+        Prints included file names
 
-    -f *fragmentation*
+    -x *fragmentation* NOT YET
         Calculates the optree *fragmentation*. 0.0 is perfect, 1.0 is very
         bad.
 
         A perfect optree has no null ops and every op->next is immediately
         next to the op.
 
-    -f<op,...> *filter*
+    -f<op,...> *filter* NOT YET
         Filter for op names and classes. Only calculate the given ops, resp.
         op class.
 
           perl -MB::Stats,-fLOGOP,COP,concat myprog.pl
+
+    -llogfile NOT YET
+        Print output only to this file. Default: STDERR
+
+METHODS
+    compile
+        Static -c check at CHECK time. Triggered by -MO=Stats,-OPTS
+
+    rcount (opcode)
+        Returns run-time count per op type.
+
+    output ($count-hash, $ops, $name)
+        General formatter
+
+    output_runtime
+        -r formatter.
+
+        Prepares count hash from @runtime array generated in XS and calls
+        output
+
+    output_table
+        -t formatter
 

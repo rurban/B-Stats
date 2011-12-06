@@ -1,9 +1,9 @@
 package B::Stats;
-our $VERSION = '0.01_20111206';
+our $VERSION = '0.01';
 
 =head1 NAME
 
-B::Stats - optree statistics
+B::Stats - print optree statistics
 
 =head1 SYNOPSIS
 
@@ -19,7 +19,7 @@ static analysis at compile-time,
 static analysis at end-time to include all runtime added modules,
 and dynamic analysis at run-time, as with a profiler.
 
-Goal:
+The purpose is to help you in your goal:
 
     no bloat;
 
@@ -52,26 +52,27 @@ Tabular list of -c, -e and -r results.
 
 =item -u I<summary>
 
-Short summary only, no class and more details per op.
+Short summary only, no op class.
+With -t only the final table(s).
 
 =item -F I<Files>
 
 Prints included file names
 
-=item -x I<fragmentation>
+=item -x I<fragmentation>  B<NOT YET>
 
 Calculates the optree I<fragmentation>. 0.0 is perfect, 1.0 is very bad.
 
 A perfect optree has no null ops and every op->next is immediately next
 to the op.
 
-=item -f<op,...> I<filter>
+=item -f<op,...> I<filter>  B<NOT YET>
 
 Filter for op names and classes. Only calculate the given ops, resp. op class.
 
   perl -MB::Stats,-fLOGOP,COP,concat myprog.pl
 
-=item -lF<logfile>
+=item -lF<logfile> B<NOT YET>
 
 Print output only to this file. Default: STDERR
 
