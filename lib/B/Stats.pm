@@ -19,6 +19,10 @@ static analysis at compile-time,
 static analysis at end-time to include all runtime added modules,
 and dynamic analysis at run-time, as with a profiler.
 
+Goal:
+
+    no bloat;
+
 =head1 OPTIONS
 
 =over
@@ -73,39 +77,39 @@ Print output only to this file. Default: STDERR
 
 =back
 
+=head1 METHODS
+
+=over
+
 =cut
 
-# Goal:
-# use less footprint;
+use strict;
 # B includes 14 files and 3821 lines. TODO: add it to our XS
 use B qw(main_root OPf_KIDS walksymtable);
 # XSLoader adds 0 files and 0 lines, already with B
 use XSLoader;
 # Opcodes-0.10 adds 6 files and 5303-3821 lines: Carp, AutoLoader, subs
 # Opcodes-0.11 adds 2 files and 4141-3821 lines: subs
-# use Opcodes;
+# use Opcodes; # deferred to run-time below
 our ($static, @runtime, $compiled);
-my (%opt, $nops, $rops, @all_subs, $frag);
+my (%opt, $nops, $rops, @all_subs, $frag, %roots);
 my ($c_count, $e_count, $r_count);
-BEGIN {
-  @runtime = ();
-}
 
 # check options
 sub import {
   $DB::single = 1 if defined &DB::deep;
-print STDERR "opt: ",@_,"; ";
+print STDERR "opt: ",@_,"; "; # for Debugging
   for (@_) { # XXX switch bundling without Getopt bloat
     if (/^-?([acerxtFu])$/) { $opt{$1} = 1; }
   }
   # -ffilter and -llog not yet
   $opt{a} = 1 if !$opt{c} and !$opt{e} and !$opt{r}; # default
   $opt{c} = $opt{e} = $opt{r} = 1 if $opt{a};
-warn "%opt: ",keys %opt,"\n";
+warn "%opt: ",keys %opt,"\n"; # for Debugging
 }
 
 # static
-sub count_op {
+sub _count_op {
   my $op = shift;
   $nops++; # count also null ops
   if ($$op) {
@@ -129,14 +133,14 @@ sub B::GV::_mypush_starts {
       for grep { B::class($_) eq "CV" } $cv->PADLIST->ARRAY->ARRAY;
   }
   return unless ${$cv->START} and ${$cv->ROOT};
-  $starts{$name} = $cv->START;
+  # $starts{$name} = $cv->START;
   $roots{$name} = $cv->ROOT;
 };
 sub B::SPECIAL::_mypush_starts{}
 
-sub walkops {
+sub _walkops {
   my ($callback, $data) = @_;
-  my %roots  = ( '__MAIN__' =>  main_root()  );
+  %roots  = ( '__MAIN__' =>  main_root()  );
   walksymtable(\%main::,
 	       '_mypush_starts',
 	       sub {
@@ -147,51 +151,51 @@ sub walkops {
   push @all_subs, { root => $_->ROOT, start => $_->START}
     for grep { B::class($_) eq "CV" } B::main_cv->PADLIST->ARRAY->ARRAY;
   for $sub (keys %roots) {
-    walkoptree_simple($roots{$sub}, $callback, $data);
+    _walkoptree_simple($roots{$sub}, $callback, $data);
   }
   $sub = "__ANON__";
   for (@all_subs) {
-    walkoptree_simple($_->{root}, $callback, $data);
+    _walkoptree_simple($_->{root}, $callback, $data);
   }
 }
 
-sub walkoptree_simple {
+sub _walkoptree_simple {
   my ($op, $callback, $data) = @_;
   $callback->($op,$data);
   if ($$op && ($op->flags & OPf_KIDS)) {
     my $kid;
     for ($kid = $op->first; $$kid; $kid = $kid->sibling) {
-      walkoptree_simple($kid, $callback, $data);
+      _walkoptree_simple($kid, $callback, $data);
     }
   }
 }
 
-# static at CHECK time. triggered by -MO=Stats,-OPTS
+=item compile
+
+Static -c check at CHECK time. Triggered by -MO=Stats,-OPTS
+
+=cut
+
 sub compile {
   import(@_); # check options via O
   $compiled++;
   $opt{c} = 1;
   return sub {
     $nops = 0;
-    walkops(\&count_op);
+    _walkops(\&_count_op);
     output($static, $nops, 'static compile-time');
   }
 }
 
-sub output_runtime {
-  $r_count = {};
-  my $i = 0;
-  require Opcodes; # Opcodes->import(qw(opname opclass));
-  for (@runtime) {
-    if (my $count = $_->[0]) {
-      $r_count->{name}->{ Opcodes::opname($i) } += $count;
-      $r_count->{class}->{ Opcodes::opclass($i) } += $count;
-      $rops += $count;
-    }
-    $i++;
-  }
-  output($r_count, $rops, 'dynamic run-time');
-}
+=item rcount (opcode)
+
+Returns run-time count per op type.
+
+=item output ($count-hash, $ops, $name)
+
+General formatter
+
+=cut
 
 sub output {
   my ($count, $ops, $name) = @_;
@@ -224,6 +228,40 @@ sub output {
   }
 }
 
+=item output_runtime
+
+-r formatter.
+
+Prepares count hash from @runtime array generated in XS and calls output
+
+=cut
+
+sub output_runtime {
+  $r_count = {};
+  require Opcodes;
+  my $maxo = Opcodes::opcodes();
+  for my $i (0..$maxo-1) {
+    if (my $count = rcount($i)) {
+      my $name = Opcodes::opname($i);
+      if ($name) {
+	my $class = $B::optype[ Opcodes::opclass($i) ];
+	$r_count->{name}->{ $name } += $count;
+	$r_count->{class}->{ $class } += $count;
+	$rops += $count;
+      } else {
+	warn "invalid name for opcount[$i]";
+      }
+    }
+  }
+  output($r_count, $rops, 'dynamic run-time');
+}
+
+=item output_table
+
+-t formatter
+
+=cut
+
 sub output_table {
   my ($c, $e, $r) = @_;
   format STDERR_TOP =
@@ -237,18 +275,22 @@ B::Stats table:
 @<<<<<<<<<<	@>>>>	@>>>>	@>>>>
 $_,$c_count->{name}->{$_},$e_count->{name}->{$_},$r_count->{name}->{$_}
 .
-  # print STDERR "\n        \t-c\t-e\t-r\n";
-  for (sort { $e_count->{name}->{$b} <=> $e_count->{name}->{$a} }
-       keys %{$e_count->{name}}) {
-    #my $l = length $_;
-    write STDERR;
-    #print STDERR $_, " " x (10-$l),
-    #  "\t", $c_count->{name}->{$_}, 
-    #  "\t", $e_count->{name}->{$_},
-    #  "\t", $r_count->{name}->{$_},
-    #  "\n";
+  if (%$e_count) {
+    for (sort { $e_count->{name}->{$b} <=> $e_count->{name}->{$a} }
+         keys %{$e_count->{name}}) {
+      write STDERR;
+    }
+  } else {
+    for (sort { $c_count->{name}->{$b} <=> $c_count->{name}->{$a} }
+         keys %{$c_count->{name}}) {
+      write STDERR;
+    }
   }
 }
+
+=back
+
+=cut
 
 # Called not via -MO=Stats, rather -MB::Stats
 CHECK {
@@ -260,7 +302,7 @@ END {
   if ($opt{e}) {
     $nops = 0;
     $static = {};
-    walkops(\&count_op);
+    _walkops(\&_count_op);
     output($static, $nops, 'static end-time');
     $e_count = $static;
   }
@@ -268,7 +310,5 @@ END {
   output_table($c_count, $e_count, $r_count) if $opt{t};
 }
 
-# XS still fails
-# XSLoader::load 'B::Stats', $VERSION;
-
+XSLoader::load 'B::Stats', $VERSION;
 1;

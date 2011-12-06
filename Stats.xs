@@ -2,36 +2,60 @@
 #include "perl.h"
 #include "XSUB.h"
 
-STATIC AV* runtime; /* [count, ppaddr] */ 
+STATIC U32 opcount[MAXO];
 
-STATIC OP *
-call_pp (pTHX_) {
-  AV* av;
-  SV **elep  = av_fetch(runtime, PL_op->op_type, TRUE);
-  assert(*elep);
-  av = (AV*)SvRV(*elep);
-  SV **count = av_fetch(av, 0, TRUE);
-  SV **orig  = av_fetch(av, 1, TRUE);
-  assert(orig);
-  SvIV_set(*count, SvIVX(*count)+1);
-  PL_op->op_ppaddr = SvIVX(*orig);
-  return CALL_FPTR (INT2PTR(Perl_ppaddr_t,SvIVX(*orig))) (aTHX);
+/* From B::C */
+STATIC int
+my_runops(pTHX)
+{
+  opcount[PL_op->op_type]++;
+
+  DEBUG_l(Perl_deb(aTHX_ "Entering new RUNOPS level (B::C)\n"));
+  do {
+#if (PERL_VERSION < 13) || ((PERL_VERSION == 13) && (PERL_SUBVERSION < 2))
+    PERL_ASYNC_CHECK();
+#endif
+    if (PL_debug) {
+      if (PL_watchaddr && (*PL_watchaddr != PL_watchok))
+	PerlIO_printf(Perl_debug_log,
+		      "WARNING: %"UVxf" changed from %"UVxf" to %"UVxf"\n",
+		      PTR2UV(PL_watchaddr), PTR2UV(PL_watchok),
+		      PTR2UV(*PL_watchaddr));
+#if defined(DEBUGGING) \
+   && !(defined(_WIN32) || (defined(__CYGWIN__) && (__GNUC__ > 3)) || defined(AIX))
+# if (PERL_VERSION > 7)
+      if (DEBUG_s_TEST_) debstack();
+      if (DEBUG_t_TEST_) debop(PL_op);
+# else
+      DEBUG_s(debstack());
+      DEBUG_t(debop(PL_op));
+# endif
+#endif
+    }
+  } while ((PL_op = CALL_FPTR(PL_op->op_ppaddr)(aTHX)));
+  TAINT_NOT;
+  return 0;
 }
 
 MODULE = B::Stats  PACKAGE = B::Stats
 
 PROTOTYPES: DISABLE
 
+U32
+rcount(opcode)
+	IV opcode
+  CODE:
+  	RETVAL = opcount[opcode];
+  OUTPUT:
+  	RETVAL
+
 BOOT:
-  {
-    int i;
-    runtime = get_av("B::Stats::runtime", 0);
-    av_extend(runtime, MAXO);
-    for (i=0; i < MAXO; i++) {
-      AV *av = newAV();
-      av_store(av, 0, newSViv(0));
-      av_store(av, 1, newSViv(PTR2IV(PL_ppaddr[i])));
-      av_store(runtime, i, newRV((SV*)av));
-      PL_ppaddr[i] = call_pp;
-    }
-  }
+#if 1
+	memset(opcount, 0, sizeof(opcount[MAXO]));
+#else
+	register int i;
+	for (i=0; i < MAXO; i++) {
+	  opcount[i] = 0;
+	}
+#endif
+	PL_runops = my_runops;
