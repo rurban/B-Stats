@@ -26,7 +26,7 @@ and dynamic analysis at run-time.
 =item -c I<static>
 
 Do static analysis at compile-time. This does not include all run-time require packages.
-Invocation via -MO=Stats does this.
+Invocation via -MO=Stats does this automatically.
 
 =item -e I<end>
 
@@ -36,14 +36,15 @@ This calculates the heap space for the optree.
 =item -r I<run>
 
 Do dynamic run-time analysis of all actually visited ops, similar to a profiler.
+Single ops can be called multiple times.
 
 =item -a I<all (default)>
 
--cer: static compile-time and end-time and dynamic run-time.
+Same as -c,-e,-r: static compile-time and end-time and dynamic run-time.
 
 =item -u I<summary>
 
-Short summary only, no details per op.
+Short summary only, no class and more details per op.
 
 =item -lF<logfile>
 
