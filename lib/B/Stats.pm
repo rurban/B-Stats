@@ -1,5 +1,5 @@
 package B::Stats;
-our $VERSION = '0.01';
+our $VERSION = '0.01_20111206';
 
 =head1 NAME
 
@@ -86,9 +86,9 @@ Print output only to this file. Default: STDERR
 
 use strict;
 # B includes 14 files and 3821 lines. TODO: add it to our XS
-use B qw(main_root OPf_KIDS walksymtable);
+use B ();
 # XSLoader adds 0 files and 0 lines, already with B
-use XSLoader;
+use XSLoader ();
 # Opcodes-0.10 adds 6 files and 5303-3821 lines: Carp, AutoLoader, subs
 # Opcodes-0.11 adds 2 files and 4141-3821 lines: subs
 # use Opcodes; # deferred to run-time below
@@ -118,13 +118,19 @@ sub import {
 #warn "%opt: ",keys %opt,"\n"; # for Debugging
 }
 
+sub _class {
+    my $name = ref shift;
+    $name =~ s/^.*:://;
+    return $name;
+}
+
 # static
 sub _count_op {
   my $op = shift;
   $nops++; # count also null ops
   if ($$op) {
     $static->{name}->{$op->name}++;
-    $static->{class}->{B::class($op)}++;
+    $static->{class}->{_class($op)}++;
   }
 }
 
@@ -140,7 +146,7 @@ sub B::GV::_mypush_starts {
       and $cv->PADLIST->ARRAY->can("ARRAY"))
   {
     push @all_subs, { root => $_->ROOT, start => $_->START}
-      for grep { B::class($_) eq "CV" } $cv->PADLIST->ARRAY->ARRAY;
+      for grep { _class($_) eq "CV" } $cv->PADLIST->ARRAY->ARRAY;
   }
   return unless ${$cv->START} and ${$cv->ROOT};
   # $starts{$name} = $cv->START;
@@ -150,8 +156,8 @@ sub B::SPECIAL::_mypush_starts{}
 
 sub _walkops {
   my ($callback, $data) = @_;
-  %roots  = ( '__MAIN__' =>  main_root()  );
-  walksymtable(\%main::,
+  %roots  = ( '__MAIN__' =>  B::main_root()  );
+  B::walksymtable(\%main::,
 	       '_mypush_starts',
 	       sub {
 		 return if scalar grep {$_[0] eq $_."::"} ('B::Stats');
@@ -159,7 +165,7 @@ sub _walkops {
 	       }, # Do not eat our own children!
 	       '');
   push @all_subs, { root => $_->ROOT, start => $_->START}
-    for grep { B::class($_) eq "CV" } B::main_cv->PADLIST->ARRAY->ARRAY;
+    for grep { _class($_) eq "CV" } B::main_cv->PADLIST->ARRAY->ARRAY;
   for $sub (keys %roots) {
     _walkoptree_simple($roots{$sub}, $callback, $data);
   }
@@ -172,7 +178,7 @@ sub _walkops {
 sub _walkoptree_simple {
   my ($op, $callback, $data) = @_;
   $callback->($op,$data);
-  if ($$op && ($op->flags & OPf_KIDS)) {
+  if ($$op && ($op->flags & B::OPf_KIDS)) {
     my $kid;
     for ($kid = $op->first; $$kid; $kid = $kid->sibling) {
       _walkoptree_simple($kid, $callback, $data);
@@ -250,11 +256,13 @@ sub output_runtime {
   $r_count = {};
   require Opcodes;
   my $maxo = Opcodes::opcodes();
+  # @optype only since 5.8.9 in B
+  my @optype = qw(OP UNOP BINOP LOGOP LISTOP PMOP SVOP PADOP PVOP LOOP COP);
   for my $i (0..$maxo-1) {
     if (my $count = rcount($i)) {
       my $name = Opcodes::opname($i);
       if ($name) {
-	my $class = $B::optype[ Opcodes::opclass($i) ];
+	my $class = $optype[ Opcodes::opclass($i) ];
 	$r_count->{name}->{ $name } += $count;
 	$r_count->{class}->{ $class } += $count;
 	$rops += $count;
@@ -263,6 +271,7 @@ sub output_runtime {
       }
     }
   }
+  # XXX substract 11 for nextstate, 9 for padsv non-threaded
   output($r_count, $rops, 'dynamic run-time');
 }
 
