@@ -44,7 +44,7 @@ Single ops can be called multiple times.
 
 =item -a I<all (default)>
 
-Same as -c,-e,-r: static compile-time and end-time and dynamic run-time.
+Same as -c,-e,-r: static compile-time, end-time and dynamic run-time.
 
 =item -t I<table>
 
@@ -99,14 +99,23 @@ my ($c_count, $e_count, $r_count);
 # check options
 sub import {
   $DB::single = 1 if defined &DB::deep;
-print STDERR "opt: ",@_,"; "; # for Debugging
-  for (@_) { # XXX switch bundling without Getopt bloat
-    if (/^-?([acerxtFu])$/) { $opt{$1} = 1; }
+#print STDERR "opt: ",join(',',@_),"; "; # for Debugging
+  for (@_) { # switch bundling without Getopt bloat
+    if (/^-?([acerxtFu])(.*)$/) {
+      $opt{$1} = 1;
+      my $rest = $2;
+      do {
+	if ($rest =~ /^-?([acerxtFu])(.*)$/) {
+	  $opt{$1} = 1;
+	  $rest = $2;
+	}
+      } while $rest;
+    }
   }
   # -ffilter and -llog not yet
   $opt{a} = 1 if !$opt{c} and !$opt{e} and !$opt{r}; # default
   $opt{c} = $opt{e} = $opt{r} = 1 if $opt{a};
-warn "%opt: ",keys %opt,"\n"; # for Debugging
+#warn "%opt: ",keys %opt,"\n"; # for Debugging
 }
 
 # static
@@ -233,7 +242,7 @@ sub output {
 
 -r formatter.
 
-Prepares count hash from @runtime array generated in XS and calls output
+Prepares count hash from the runtime generated structure in XS and calls output().
 
 =cut
 

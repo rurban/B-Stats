@@ -31,9 +31,8 @@ unlike( $c, qr/^B::Stats dynamic run-time:/m,  "-MO=Stats,-c,-u => !r" );
 $c = qx{ $X -Mblib -MB::Stats=-ceu t/test.pl $redir };
 like( $c, qr/^B::Stats static compile-time:/m, "-MO=Stats,-ceu => c" );
 like( $c, qr/^B::Stats static end-time:/m,     "-MO=Stats,-ceu => e" );
-TODO: {
-  local $TODO = "switch bundling not yet";
-  unlike( $c, qr/^op class:/m,                   "-MO=Stats,-ceu => u" );
-  unlike( $c, qr/^B::Stats dynamic run-time:/m,  "-MO=Stats,-ceu => !r" );
-}
+
+unlike( $c, qr/^op class:/m,                   "-MO=Stats,-ceu => u" );
+unlike( $c, qr/^B::Stats dynamic run-time:/m,  "-MO=Stats,-ceu => !r" );
+
 
