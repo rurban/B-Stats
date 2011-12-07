@@ -4,6 +4,7 @@ t/compile.t
 t/options.t
 t/table.t
 t/test.pl
+LICENSE
 Makefile.PL
 MANIFEST
 README

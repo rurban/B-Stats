@@ -1,7 +1,5 @@
 package B::Stats;
-our $VERSION = '0.01_20111206';
-our (%B_inc, %B_env);
-BEGIN { %B_inc = %INC; }
+our $VERSION = '0.01_20111207';
 
 # TODO:
 # Do not count B::Stats and its dependencies.
@@ -89,6 +87,9 @@ Print output only to this file. Default: STDERR
 =over
 
 =cut
+
+our (%B_inc, %B_env);
+BEGIN { %B_inc = %INC; }
 
 require strict; strict->import();
 # B includes 14 files and 3821 lines. TODO: filter it out somehow
