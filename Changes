@@ -2,6 +2,7 @@
 
 0.02	2011-12-?? rurban
 	* added switch bundling
+	* added t/exact.t (TODO)
 
 0.01	2011-12-06 rurban
 	* First release as B-Stats-0.01

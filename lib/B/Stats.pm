@@ -1,5 +1,11 @@
 package B::Stats;
 our $VERSION = '0.01_20111206';
+our (%B_inc, %B_env);
+BEGIN { %B_inc = %INC; }
+
+# TODO:
+# Do not count B::Stats and its dependencies.
+# How? Calc a minimal 3 op at install-time?
 
 =head1 NAME
 
@@ -84,11 +90,11 @@ Print output only to this file. Default: STDERR
 
 =cut
 
-use strict;
-# B includes 14 files and 3821 lines. TODO: add it to our XS
-use B ();
-# XSLoader adds 0 files and 0 lines, already with B
-use XSLoader ();
+require strict; strict->import();
+# B includes 14 files and 3821 lines. TODO: filter it out somehow
+# require B;
+# XSLoader adds 0 files and 0 lines, already with B.
+# Changed to DynaoLoader
 # Opcodes-0.10 adds 6 files and 5303-3821 lines: Carp, AutoLoader, subs
 # Opcodes-0.11 adds 2 files and 4141-3821 lines: subs
 # use Opcodes; # deferred to run-time below
@@ -134,9 +140,14 @@ sub _count_op {
   }
 }
 
+# subs and stashes before B is loaded
+sub _collect_env {
+  %B_env = { B::Stats => 1};
+  _xs_collect_env() if $INC{'DynaLoader.pm'};
+}
+
 # from B::Utils
 our $sub;
-
 sub B::GV::_mypush_starts {
   my $name = $_[0]->STASH->NAME."::".$_[0]->SAFENAME;
   return unless ${$_[0]->CV};
@@ -145,33 +156,34 @@ sub B::GV::_mypush_starts {
       and $cv->PADLIST->ARRAY
       and $cv->PADLIST->ARRAY->can("ARRAY"))
   {
-    push @all_subs, { root => $_->ROOT, start => $_->START}
+    push @all_subs, $_->ROOT
       for grep { _class($_) eq "CV" } $cv->PADLIST->ARRAY->ARRAY;
   }
   return unless ${$cv->START} and ${$cv->ROOT};
-  # $starts{$name} = $cv->START;
   $roots{$name} = $cv->ROOT;
 };
 sub B::SPECIAL::_mypush_starts{}
 
 sub _walkops {
   my ($callback, $data) = @_;
+  _collect_env() unless %B_env;
+  require 'B.pm';
   %roots  = ( '__MAIN__' =>  B::main_root()  );
-  B::walksymtable(\%main::,
+  _walksymtable(\%main::,
 	       '_mypush_starts',
 	       sub {
 		 return if scalar grep {$_[0] eq $_."::"} ('B::Stats');
 		 1;
 	       }, # Do not eat our own children!
 	       '');
-  push @all_subs, { root => $_->ROOT, start => $_->START}
+  push @all_subs, $_->ROOT
     for grep { _class($_) eq "CV" } B::main_cv->PADLIST->ARRAY->ARRAY;
   for $sub (keys %roots) {
     _walkoptree_simple($roots{$sub}, $callback, $data);
   }
   $sub = "__ANON__";
   for (@all_subs) {
-    _walkoptree_simple($_->{root}, $callback, $data);
+    _walkoptree_simple($_, $callback, $data);
   }
 }
 
@@ -179,11 +191,30 @@ sub _walkoptree_simple {
   my ($op, $callback, $data) = @_;
   $callback->($op,$data);
   if ($$op && ($op->flags & B::OPf_KIDS)) {
-    my $kid;
-    for ($kid = $op->first; $$kid; $kid = $kid->sibling) {
+    for (my $kid = $op->first; $$kid; $kid = $kid->sibling) {
       _walkoptree_simple($kid, $callback, $data);
     }
   }
+}
+
+sub _walksymtable {
+    my ($symref, $method, $recurse, $prefix) = @_;
+    my ($sym, $ref, $fullname);
+    no strict 'refs';
+    $prefix = '' unless defined $prefix;
+    while (($sym, $ref) = each %$symref) {
+        $fullname = "*main::".$prefix.$sym;
+	if ($sym =~ /::$/) {
+	    $sym = $prefix . $sym;
+	    if (B::svref_2object(\*$sym)->NAME ne "main::" &&
+		$sym ne "<none>::" && &$recurse($sym))
+	    {
+               _walksymtable(\%$fullname, $method, $recurse, $sym);
+	    }
+	} else {
+           B::svref_2object(\*$fullname)->$method();
+	}
+    }
 }
 
 =item compile
@@ -216,9 +247,9 @@ General formatter
 sub output {
   my ($count, $ops, $name) = @_;
 
-  my $files = scalar keys %INC;
+  my $files = scalar keys %B_inc;
   my $lines = 0;
-  for (values %INC) {
+  for (values %B_inc) {
     print STDERR $_,"\n" if $opt{F};
     open IN, "<", "$_";
     # Todo: skip pod?
@@ -254,6 +285,11 @@ Prepares count hash from the runtime generated structure in XS and calls output(
 
 sub output_runtime {
   $r_count = {};
+
+  require DynaLoader;
+  our @ISA = ('DynaLoader');
+  DynaLoader::bootstrap('B::Stats', $VERSION);
+
   require Opcodes;
   my $maxo = Opcodes::opcodes();
   # @optype only since 5.8.9 in B
@@ -329,5 +365,4 @@ END {
   output_table($c_count, $e_count, $r_count) if $opt{t};
 }
 
-XSLoader::load 'B::Stats', $VERSION;
 1;

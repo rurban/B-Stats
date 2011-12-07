@@ -85,17 +85,26 @@ U32
 rcount(opcode)
 	IV opcode
   CODE:
-  	RETVAL = opcount[opcode];
+	RETVAL = opcount[opcode];
   OUTPUT:
-  	RETVAL
+	RETVAL
+
+void
+_xs_collect_env()
+  CODE:
+	/* walk stashes in C and store in %B_env before B is loaded,
+	   to be able to detect if our testfunc loads B and its 14 deps itself.
+	 */
 
 BOOT:
+{
 #if 1
-	memset(opcount, 0, sizeof(opcount[MAXO]));
+  memset(opcount, 0, sizeof(opcount[MAXO]));
 #else
-	register int i;
-	for (i=0; i < MAXO; i++) {
-	  opcount[i] = 0;
-	}
+  register int i;
+  for (i=0; i < MAXO; i++) {
+    opcount[i] = 0;
+  }
 #endif
-	PL_runops = my_runops;
+  PL_runops = my_runops;
+}
