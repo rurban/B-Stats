@@ -10,3 +10,5 @@ blib/
 pm_to_blib
 lib/B/Stats/Minus.pm
 log.*
+Debian_CPANTS.txt
+B-Stats-*.tar.gz
