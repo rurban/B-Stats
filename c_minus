@@ -1,0 +1,49 @@
+# -*- perl -*-
+# write B::Stats overhead with zero program -e1 to %B::Stats::Minus::overhead
+# TODO: add -f w/o sitecustomize
+#       if $Config{usesitecustomize}
+my $X = $^X =~ m/\s/ ? qq{"$^X"} : $^X; 
+my $redir = $^O eq 'MSWin32' ? '' : '2>&1';
+
+my $t = `$X -Mblib -MO=-qq,Terse -e1 | $X -anl -e'print \$F[2]'`;
+my $c = `$X -Mblib -MB::Stats=-u -e1 $redir`;
+
+my (%t, %c);
+my $t_ops = scalar split(/\n/,$t);
+$t{$_}++ for split/\n/,$t;
+
+my $key = 'c';
+for (split/\n/,$c) {
+  $key = 'e' if /B::Stats static end-time:/;
+  $key = 'r' if /B::Stats dynamic run-time:/;
+  my($op,$n) = split/\s+/ unless /^(B::Stats|op name|files=)/;
+  if (/^files=/) {
+    for (split/\s+/) {
+      if (/(files|ops|lines)=(\d+)/) {
+	$c{$key}{"_$1"} = 0+$2;
+      }
+    }
+    next;
+  }
+  $c{$key}{$op} = 0+$n if $op and $n;
+}
+
+for (keys %t) { # nextstate null enter leave w/o sitecustomize
+  for my $key (qw(c e r)) {
+    $c{$key}{$_} -= $t{$_} if $c{$key}{$_};
+  }
+}
+
+use Data::Dumper;
+open P,">","lib/B/Stats/Minus.pm" or die;
+print P "package B::Stats::Minus;
+# written by B::Stats Makefile.PL. install-time generated data, to calculate the B::Stats overhead.
+#   c includes B with its 16 dependencies
+#   e adds Opcodes
+";
+print P Data::Dumper->Dump([\%c, \%t], [qw(overhead test)]);
+print P "# \$test from -e1
+";
+print P "1;
+";
+close P;

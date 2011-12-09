@@ -1,9 +1,8 @@
 package B::Stats;
-our $VERSION = '0.01_20111207';
+our $VERSION = '0.01_20111209';
 
 # TODO:
-# Do not count B::Stats and its dependencies.
-# How? Calc a minimal 3 op at install-time?
+# Substract B::Stats::Minus overhead.
 
 =head1 NAME
 
@@ -93,7 +92,8 @@ BEGIN { %B_inc = %INC; }
 
 require strict; strict->import();
 # B includes 14 files and 3821 lines. TODO: filter it out somehow
-# require B;
+use B;
+use B::Stats::Minus;
 # XSLoader adds 0 files and 0 lines, already with B.
 # Changed to DynaoLoader
 # Opcodes-0.10 adds 6 files and 5303-3821 lines: Carp, AutoLoader, subs
@@ -257,6 +257,15 @@ sub output {
     while (<IN>) { chomp; s/#.*//; next if not length $_; $lines++; };
     close IN;
   }
+  my %name = (
+    'static compile-time' => 'c',
+    'static end-time'     => 'e',
+    'dynamic run-time'    => 'r'
+    );
+  my $key = $name{$name};
+  $files =- $B::Stats::Minus::overhead{$key}{_files};
+  $lines =- $B::Stats::Minus::overhead{$key}{_lines};
+  $ops =- $B::Stats::Minus::overhead{$key}{_ops};
   print STDERR "\nB::Stats $name:\nfiles=$files\tlines=$lines\tops=$ops\n";
   return if $opt{t} and $opt{u};
 
@@ -264,7 +273,8 @@ sub output {
   for (sort { $count->{name}->{$b} <=> $count->{name}->{$a} }
        keys %{$count->{name}}) {
     my $l = length $_;
-    print STDERR $_, " " x (10-$l), "\t", $count->{name}->{$_}, "\n";
+    my $c = $count->{name}->{$_} - $B::Stats::Minus::overhead{$key}{$_};
+    print STDERR $_, " " x (10-$l), "\t", $c, "\n";
   }
   unless ($opt{u}) {
     print STDERR "\nop class:\n";

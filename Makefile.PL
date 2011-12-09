@@ -13,6 +13,7 @@ my %WriteMakefileArgs =
    "PREREQ_PM" =>  {
 		    'Opcodes' 	=> "0.11",
 		    'B' 	=> 0,	# 5.6.2 has no version, 5.8.1 has 1.02
+		    'Data::Dumper' => 0,# in core since perl 5.005
 		   },
    "SIGN" => 1,
    ($ExtUtils::MakeMaker::VERSION gt '6.46' ?
@@ -30,6 +31,9 @@ WriteMakefile(%WriteMakefileArgs);
 
 sub MY::depend {
   "
+lib/B/Stats/Minus.pm : Makefile c_minus
+	\$(FULLPERL) c_minus
+
 README : lib/B/Stats.pm
 	pod2text lib/B/Stats.pm > README
 ";
