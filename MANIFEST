@@ -9,3 +9,4 @@ Makefile.PL
 MANIFEST
 README
 Stats.xs
+META.yml                                 Module meta-data (added by MakeMaker)

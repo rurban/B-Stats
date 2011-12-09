@@ -1,8 +1,9 @@
 -*- change-log -*-
 
-0.02	2011-12-?? rurban
-	* added switch bundling
-	* added t/exact.t (TODO)
+0.02	2011-12-09 rurban
+	* added generated B::Stats::Minus to substract our own overhead
+	* implemented switch bundling
+	* added t/exact.t to test B::Stats::Minus
 
 0.01	2011-12-06 rurban
 	* First release as B-Stats-0.01

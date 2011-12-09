@@ -27,4 +27,4 @@ like( $c, qr/^B::Stats table:/m,               "-MB::Stats,-t,-u => t" );
 
 unlike( $c, qr/^nextstate\s+[1-9]\d+$/m, "nextstate in -c" );
 like  ( $c, qr/^nextstate\s+[1-9]\d+\s+[1-9]\d+/m, "nextstate in table (c+e)" );
-like  ( $c, qr/^nextstate\s+[1-9]\d+\s+[1-9]\d+\s+[1-9]\d+/m, "nextstate in table (c+e+r)" );
+like  ( $c, qr/^nextstate\s+[1-9]\d*\s+[1-9]\d*\s+[1-9]\d*/m, "nextstate in table (c+e+r)" );

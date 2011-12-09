@@ -13,5 +13,5 @@ unlike( $c, qr/^B::Stats static end-time:/m,     "-MB::Stats=-r => !e" );
 like( $c, qr/^B::Stats dynamic run-time:/m,      "-MB::Stats=-r => r" );
 like(   $c, qr/^op class:/m,                     "-MB::Stats,-r => !u" );
 
-like( $c, qr/^nextstate\s+[1-9]\d+$/m, "nextstate > 0" );
-like( $c, qr/^COP\s+[1-9]\d+$/m, "COP > 0" );
+like( $c, qr/^nextstate\s+[1-9]\d*$/m, "nextstate > 0" );
+like( $c, qr/^COP\s+[1-9]\d*$/m, "COP > 0" );

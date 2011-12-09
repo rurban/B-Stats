@@ -1,8 +1,5 @@
 package B::Stats;
-our $VERSION = '0.01_20111209';
-
-# TODO:
-# Substract B::Stats::Minus overhead.
+our $VERSION = '0.02';
 
 =head1 NAME
 
@@ -90,7 +87,7 @@ Print output only to this file. Default: STDERR
 our (%B_inc, %B_env);
 BEGIN { %B_inc = %INC; }
 
-require strict; strict->import();
+use strict;
 # B includes 14 files and 3821 lines. overhead subtracted with B::Stats::Minus
 use B;
 use B::Stats::Minus;
@@ -144,7 +141,7 @@ sub _count_op {
 # collect subs and stashes before B is loaded
 # XXX not yet used. we rather use B::Stats::Minus
 sub _collect_env {
-  %B_env = { B::Stats => 1};
+  %B_env = { 'B::Stats' => 1};
   _xs_collect_env() if $INC{'DynaLoader.pm'};
 }
 
@@ -264,9 +261,9 @@ sub output {
     'dynamic run-time'    => 'r'
     );
   my $key = $name{$name};
-  $files =- $B::Stats::Minus::overhead{$key}{_files};
-  $lines =- $B::Stats::Minus::overhead{$key}{_lines};
-  $ops =- $B::Stats::Minus::overhead{$key}{_ops};
+  $files -= $B::Stats::Minus::overhead{$key}{_files};
+  $lines -= $B::Stats::Minus::overhead{$key}{_lines};
+  $ops -= $B::Stats::Minus::overhead{$key}{_ops};
   print STDERR "\nB::Stats $name:\nfiles=$files\tlines=$lines\tops=$ops\n";
   return if $opt{t} and $opt{u};
 
