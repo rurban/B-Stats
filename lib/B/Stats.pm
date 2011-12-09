@@ -91,11 +91,11 @@ our (%B_inc, %B_env);
 BEGIN { %B_inc = %INC; }
 
 require strict; strict->import();
-# B includes 14 files and 3821 lines. TODO: filter it out somehow
+# B includes 14 files and 3821 lines. overhead subtracted with B::Stats::Minus
 use B;
 use B::Stats::Minus;
 # XSLoader adds 0 files and 0 lines, already with B.
-# Changed to DynaoLoader
+# Changed to DynaLoader
 # Opcodes-0.10 adds 6 files and 5303-3821 lines: Carp, AutoLoader, subs
 # Opcodes-0.11 adds 2 files and 4141-3821 lines: subs
 # use Opcodes; # deferred to run-time below
