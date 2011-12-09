@@ -105,7 +105,7 @@ my ($c_count, $e_count, $r_count);
 
 # check options
 sub import {
-  $DB::single = 1 if defined &DB::deep;
+  $DB::single = 1 if defined &DB::DB;
 #print STDERR "opt: ",join(',',@_),"; "; # for Debugging
   for (@_) { # switch bundling without Getopt bloat
     if (/^-?([acerxtFu])(.*)$/) {
@@ -141,7 +141,8 @@ sub _count_op {
   }
 }
 
-# subs and stashes before B is loaded
+# collect subs and stashes before B is loaded
+# XXX not yet used. we rather use B::Stats::Minus
 sub _collect_env {
   %B_env = { B::Stats => 1};
   _xs_collect_env() if $INC{'DynaLoader.pm'};
@@ -167,7 +168,7 @@ sub B::SPECIAL::_mypush_starts{}
 
 sub _walkops {
   my ($callback, $data) = @_;
-  _collect_env() unless %B_env;
+  # _collect_env() unless %B_env;
   require 'B.pm';
   %roots  = ( '__MAIN__' =>  B::main_root()  );
   _walksymtable(\%main::,
@@ -318,7 +319,6 @@ sub output_runtime {
       }
     }
   }
-  # XXX substract 11 for nextstate, 9 for padsv non-threaded
   output($r_count, $rops, 'dynamic run-time');
 }
 
