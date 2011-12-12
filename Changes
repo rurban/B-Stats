@@ -1,5 +1,8 @@
 -*- change-log -*-
 
+0.03	2011-12-12 rurban
+	* forgot to add c_minus and lib/B/Stats/Minus.pm to MANIFEST
+
 0.02	2011-12-09 rurban
 	* added generated B::Stats::Minus to substract our own overhead
 	* implemented switch bundling

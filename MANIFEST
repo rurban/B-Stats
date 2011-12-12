@@ -1,5 +1,7 @@
 .gitignore
+c_minus
 lib/B/Stats.pm
+lib/B/Stats/Minus.pm
 t/compile.t
 t/options.t
 t/table.t
