@@ -1,5 +1,5 @@
 package B::Stats;
-our $VERSION = '0.03';
+our $VERSION = '0.03_20111212';
 
 =head1 NAME
 
@@ -25,6 +25,8 @@ The purpose is to help you in your goal:
 
 =head1 OPTIONS
 
+Options can be bundled: C<-c,-e,-r> eq C<-cer>
+
 =over
 
 =item -c I<static>
@@ -44,7 +46,7 @@ Single ops can be called multiple times.
 
 =item -a I<all (default)>
 
-Same as -c,-e,-r: static compile-time, end-time and dynamic run-time.
+Same as -cer: static compile-time, end-time and dynamic run-time.
 
 =item -t I<table>
 
@@ -246,21 +248,22 @@ General formatter
 sub output {
   my ($count, $ops, $name) = @_;
 
-  my $files = scalar keys %B_inc;
-  my $lines = 0;
-  for (values %B_inc) {
-    print STDERR $_,"\n" if $opt{F};
-    open IN, "<", "$_";
-    # Todo: skip pod?
-    while (<IN>) { chomp; s/#.*//; next if not length $_; $lines++; };
-    close IN;
-  }
   my %name = (
     'static compile-time' => 'c',
     'static end-time'     => 'e',
     'dynamic run-time'    => 'r'
     );
   my $key = $name{$name};
+  my $lines = 0;
+  my $inc = $key eq 'c' ? \%B_inc : \%INC;
+  my $files = scalar keys %$inc;
+  for (values %$inc) {
+    print STDERR $_,"\n" if $opt{F};
+    open IN, "<", "$_";
+    # Todo: skip pod?
+    while (<IN>) { chomp; s/#.*//; next if not length $_; $lines++; };
+    close IN;
+  }
   $files -= $B::Stats::Minus::overhead{$key}{_files};
   $lines -= $B::Stats::Minus::overhead{$key}{_lines};
   $ops -= $B::Stats::Minus::overhead{$key}{_ops};

@@ -12,8 +12,11 @@ my $MODULE = 'Test::CPAN::Meta 0.12';
 
 # Don't run tests for installs
 use Test::More;
+use Config;
 plan skip_all => 'This test is only run for the module author'
     unless -d '.git' || $ENV{IS_MAINTAINER};
+plan skip_all => 'Test::CPAN::Meta fails with clang -faddress-sanitizer'
+    if $Config{ccflags} =~ /-faddress-sanitizer/;
 
 # Load the testing module
 eval "use $MODULE;";
