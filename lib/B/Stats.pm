@@ -1,5 +1,5 @@
 package B::Stats;
-our $VERSION = '0.03_20111212';
+our $VERSION = '0.04';
 
 =head1 NAME
 
@@ -328,28 +328,38 @@ sub output_runtime {
 
 =cut
 
+sub _output_tline {
+  my $n = shift;
+  my $name = $n.(" "x(12-length($n)));
+  print STDERR join("\t",
+		    ($name,
+		     $c_count->{name}->{$n},
+		     $e_count->{name}->{$n},
+		     $r_count->{name}->{$n})),
+               "\n";
+}
+
 sub output_table {
   my ($c, $e, $r) = @_;
-  format STDERR_TOP =
-
+  # XXX we have empty runops runs with format.
+  #my $x = 0;
+  #for (keys %{$r_count->{name}}) {
+  #  $x++ if $r_count->{name}->{$_};
+  #}
+  #return unless $x;
+  print "
 B::Stats table:
-@<<<<<<<<<<	@>>>>	@>>>>	@>>>>
-"",             "-c",   "-e",   "-r"
-.
-  write STDERR;
-  format STDERR =
-@<<<<<<<<<<	@>>>>	@>>>>	@>>>>
-$_,$c_count->{name}->{$_},$e_count->{name}->{$_},$r_count->{name}->{$_}
-.
+           	-c	-e	-r
+";
   if (%$e_count) {
     for (sort { $e_count->{name}->{$b} <=> $e_count->{name}->{$a} }
          keys %{$e_count->{name}}) {
-      write STDERR;
+      _output_tline($_);
     }
   } else {
     for (sort { $c_count->{name}->{$b} <=> $c_count->{name}->{$a} }
          keys %{$c_count->{name}}) {
-      write STDERR;
+      _output_tline($_);
     }
   }
 }
@@ -373,7 +383,9 @@ END {
     $e_count = $static;
   }
   output_runtime() if $opt{r};
-  output_table($c_count, $e_count, $r_count) if $opt{t};
+  if ( $opt{t} and ($] < 5.014 or ${^GLOBAL_PHASE} ne 'DESTRUCT') ) {
+    output_table($c_count, $e_count, $r_count);
+  }
 }
 
 1;

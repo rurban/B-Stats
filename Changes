@@ -2,6 +2,7 @@
 
 0.04	2011-12-12 rurban
 	* use run-time not begin-time %INC on -r or -e for files and lines.
+	* fixed empty END runops loops caused by format
 
 0.03	2011-12-12 rurban
 	* forgot to add c_minus and lib/B/Stats/Minus.pm to MANIFEST

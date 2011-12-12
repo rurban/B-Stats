@@ -48,7 +48,7 @@ my_runops(pTHX)
     }
   }
 
-  DEBUG_l(Perl_deb(aTHX_ "Entering new RUNOPS level (B::Stats)\n"));
+  DEBUG_v(Perl_deb(aTHX_ "Entering new RUNOPS level (B::Stats)\n"));
   do {
 #if (PERL_VERSION < 13) || ((PERL_VERSION == 13) && (PERL_SUBVERSION < 2))
     PERL_ASYNC_CHECK();
@@ -71,7 +71,7 @@ my_runops(pTHX)
 #endif
     }
   } while ((PL_op = CALL_FPTR(PL_op->op_ppaddr)(aTHX)));
-  DEBUG_l(Perl_deb(aTHX_ "leaving RUNOPS level (B::Stats)\n"));
+  DEBUG_v(Perl_deb(aTHX_ "leaving RUNOPS level (B::Stats)\n"));
 
   TAINT_NOT;
   return 0;
