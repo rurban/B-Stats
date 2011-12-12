@@ -1,7 +1,8 @@
 #!perl
 
 use Test::More;
-Test::More->import('no_plan') if $] < 5.008005;
+Test::More->import('no_plan') if $] > 5.008005;
+plan skip_all => 'done_testing requires 5.8.6' if $] <= 5.008005;
 
 my $X = $^X =~ m/\s/ ? qq{"$^X"} : $^X;
 # no fake requested ## local $ENV{HOME} = tempdir( CLEANUP => 1 );
@@ -16,7 +17,7 @@ my $ops = scalar(@lines);
 $t{$_}++ for @lines;
 
 TODO: {
-  local $TODO = "B::Stats still pollutes the result";
+  local $TODO = "B::Stats still not exact, pollutes the result";
   my ($files) = $c =~ /^files=(\d+)\s/m;
   is ($files, 1, "files=1");
   my ($lines) = $c =~ /\slines=(\d+)\s/m;
@@ -30,4 +31,5 @@ TODO: {
   }
 }
 
-done_testing() unless $] < 5.008005;
+Test::More::done_testing() if defined &Test::More::done_testing;
+
