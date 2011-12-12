@@ -72,11 +72,13 @@ to the op.
 
 Filter for op names and classes. Only calculate the given ops, resp. op class.
 
-  perl -MB::Stats,-fLOGOP,COP,concat myprog.pl
+  perl -MB::Stats,-fLOGOP,-fCOP,-fconcat myprog.pl
 
-=item -lF<logfile> B<NOT YET>
+=item -lF<logfile>
 
 Print output only to this file. Default: STDERR
+
+  perl -MB::Stats,-llog myprog.pl
 
 =back
 
@@ -98,7 +100,7 @@ use B::Stats::Minus;
 # Opcodes-0.10 adds 6 files and 5303-3821 lines: Carp, AutoLoader, subs
 # Opcodes-0.11 adds 2 files and 4141-3821 lines: subs
 # use Opcodes; # deferred to run-time below
-our ($static, @runtime, $compiled);
+our ($static, @runtime, $compiled, $imported, $LOG);
 my (%opt, $nops, $rops, @all_subs, $frag, %roots);
 my ($c_count, $e_count, $r_count);
 
@@ -117,11 +119,41 @@ sub import {
 	}
       } while $rest;
     }
+    # taking multiple arguments: -ffilter
+    if (/^-?f(.*)$/) {
+      my $arg = $1;
+      if ($arg =~ /^[A-Z]*OP$/) {
+	my @optype = qw(OP UNOP BINOP LOGOP LISTOP PMOP SVOP PADOP PVOP LOOP COP);
+	$opt{f}->{class}->{$arg} = 1;
+	die "invalid B::Stats,-fOPCLASS argument: $arg\n"
+	  unless grep {$arg eq $_} @optype;
+	# pre-expand names for the class
+	require Opcodes;
+	my $maxo = Opcodes::opcodes();
+	for my $i (0..$maxo-1) {
+	  my $name = Opcodes::opname($i);
+	  my $class = $optype[ Opcodes::opclass($i) ];
+	  if ($class eq $arg) {
+	    $opt{f}->{name}->{$name} = 1;
+	  }
+	}
+      } elsif ($arg =~ /^[a-z_]+$/) {
+	$opt{f}->{name}->{$arg} = 1;
+      } else {
+	die "invalid B::Stats,-ffilter argument: $arg\n";
+      }
+    }
+    if (/^-?(l)(.*)$/) { # taking arguments: -llogfile
+      $opt{$1} = $2;
+      open $LOG, ">", $opt{l} or die "Cannot write to B::Stats,-llogfile: $opt{l}\n";
+    }
   }
-  # -ffilter and -llog not yet
+
   $opt{a} = 1 if !$opt{c} and !$opt{e} and !$opt{r}; # default
   $opt{c} = $opt{e} = $opt{r} = 1 if $opt{a};
 #warn "%opt: ",keys %opt,"\n"; # for Debugging
+  $LOG = \*STDERR unless $opt{l};
+  $imported = 1;
 }
 
 sub _class {
@@ -225,7 +257,7 @@ Static -c check at CHECK time. Triggered by -MO=Stats,-OPTS
 =cut
 
 sub compile {
-  import(@_); # check options via O
+  import(@_) unless $imported; # check options via O
   $compiled++;
   $opt{c} = 1;
   return sub {
@@ -258,7 +290,7 @@ sub output {
   my $inc = $key eq 'c' ? \%B_inc : \%INC;
   my $files = scalar keys %$inc;
   for (values %$inc) {
-    print STDERR $_,"\n" if $opt{F};
+    print $LOG $_,"\n" if $opt{F};
     open IN, "<", "$_";
     # Todo: skip pod?
     while (<IN>) { chomp; s/#.*//; next if not length $_; $lines++; };
@@ -267,22 +299,24 @@ sub output {
   $files -= $B::Stats::Minus::overhead{$key}{_files};
   $lines -= $B::Stats::Minus::overhead{$key}{_lines};
   $ops -= $B::Stats::Minus::overhead{$key}{_ops};
-  print STDERR "\nB::Stats $name:\nfiles=$files\tlines=$lines\tops=$ops\n";
+  print $LOG "\nB::Stats $name:\nfiles=$files\tlines=$lines\tops=$ops\n";
   return if $opt{t} and $opt{u};
 
-  print STDERR "\nop name:\n";
+  print $LOG "\nop name:\n";
   for (sort { $count->{name}->{$b} <=> $count->{name}->{$a} }
        keys %{$count->{name}}) {
     my $l = length $_;
     my $c = $count->{name}->{$_} - $B::Stats::Minus::overhead{$key}{$_};
-    print STDERR $_, " " x (10-$l), "\t", $c, "\n";
+    next if $opt{f} and !$opt{f}->{name}->{$_};
+    print $LOG $_, " " x (10-$l), "\t", $c, "\n";
   }
   unless ($opt{u}) {
-    print STDERR "\nop class:\n";
+    print $LOG "\nop class:\n";
     for (sort { $count->{class}->{$b} <=> $count->{class}->{$a} }
 	 keys %{$count->{class}}) {
+      next if $opt{f} and !$opt{f}->{class}->{$_};
       my $l = length $_;
-      print STDERR $_, " " x (10-$l), "\t", $count->{class}->{$_}, "\n";
+      print $LOG $_, " " x (10-$l), "\t", $count->{class}->{$_}, "\n";
     }
   }
 }
@@ -311,9 +345,11 @@ sub output_runtime {
       my $name = Opcodes::opname($i);
       if ($name) {
 	my $class = $optype[ Opcodes::opclass($i) ];
+	next if $opt{f} and !$opt{f}->{name}->{$name};
+	next if $opt{f} and !$opt{f}->{class}->{$class};
 	$r_count->{name}->{ $name } += $count;
-	$r_count->{class}->{ $class } += $count;
 	$rops += $count;
+	$r_count->{class}->{ $class } += $count;
       } else {
 	warn "invalid name for opcount[$i]";
       }
@@ -331,7 +367,8 @@ sub output_runtime {
 sub _output_tline {
   my $n = shift;
   my $name = $n.(" "x(12-length($n)));
-  print STDERR join("\t",
+  return if $opt{f} and !$opt{f}->{name}->{$n};
+  print $LOG join("\t",
 		    ($name,
 		     $c_count->{name}->{$n},
 		     $e_count->{name}->{$n},
