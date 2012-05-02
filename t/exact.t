@@ -31,5 +31,4 @@ TODO: {
   }
 }
 
-Test::More::done_testing() if defined &Test::More::done_testing;
-
+Test::More::done_testing() if defined &Test::More::done_testing and $] <= 5.008005;

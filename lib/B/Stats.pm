@@ -1,5 +1,9 @@
 package B::Stats;
-our $VERSION = '0.04';
+our $VERSION = '0.05';
+
+# TODO
+# exact: probably use Opcodes and DynaLoader at BEGIN for c_minus.
+# less overhead: do more in XS: _class, _count_op, _walkoptree_simple, _walksymtable
 
 =head1 NAME
 
@@ -200,7 +204,6 @@ sub B::SPECIAL::_mypush_starts{}
 sub _walkops {
   my ($callback, $data) = @_;
   # _collect_env() unless %B_env;
-  require 'B.pm';
   %roots  = ( '__MAIN__' =>  B::main_root()  );
   _walksymtable(\%main::,
 	       '_mypush_starts',
@@ -214,7 +217,7 @@ sub _walkops {
   for $sub (keys %roots) {
     _walkoptree_simple($roots{$sub}, $callback, $data);
   }
-  $sub = "__ANON__";
+  # catches __ANON__
   for (@all_subs) {
     _walkoptree_simple($_, $callback, $data);
   }
@@ -296,6 +299,9 @@ sub output {
     while (<IN>) { chomp; s/#.*//; next if not length $_; $lines++; };
     close IN;
   }
+  for (qw(_files _lines _ops)) {
+    $B::Stats::Minus::overhead{$key}{$_} = 0 unless $B::Stats::Minus::overhead{$key}{$_};
+  }
   $files -= $B::Stats::Minus::overhead{$key}{_files};
   $lines -= $B::Stats::Minus::overhead{$key}{_lines};
   $ops -= $B::Stats::Minus::overhead{$key}{_ops};
@@ -306,7 +312,8 @@ sub output {
   for (sort { $count->{name}->{$b} <=> $count->{name}->{$a} }
        keys %{$count->{name}}) {
     my $l = length $_;
-    my $c = $count->{name}->{$_} - $B::Stats::Minus::overhead{$key}{$_};
+    my $c = $count->{name}->{$_};
+    $c -= $B::Stats::Minus::overhead{$key}{$_} if exists $B::Stats::Minus::overhead{$key}{$_};
     next if $opt{f} and !$opt{f}->{name}->{$_};
     print $LOG $_, " " x (10-$l), "\t", $c, "\n";
   }
