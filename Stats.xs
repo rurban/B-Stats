@@ -1,6 +1,20 @@
+#define PERL_NO_GET_CONTEXT
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+
+/* CPAN #28912: MSWin32 and AIX as only platforms do not export PERL_CORE functions,
+   such as Perl_debop
+   so disable this feature. cygwin gcc-3 --export-all-symbols was non-strict, gcc-4 is.
+   POSIX with export PERL_DL_NONLAZY=1 also fails. This is checked in Makefile.PL
+   but cannot be solved for clients adding it.
+*/
+#if !defined (DISABLE_PERL_CORE_EXPORTED) &&                            \
+  (defined(WIN32) ||                                                    \
+   defined(_MSC_VER) || defined(__MINGW32_VERSION) ||			\
+   (defined(__CYGWIN__) && (__GNUC__ > 3)) || defined(AIX))
+# define DISABLE_PERL_CORE_EXPORTED
+#endif
 
 STATIC U32 opcount[MAXO];
 
@@ -41,11 +55,15 @@ my_runops(pTHX)
 #endif
   if (!ignore) {
     opcount[PL_op->op_type]++;
+#ifdef DEBUGGING
     if (DEBUG_v_TEST_) {
+# ifndef DISABLE_PERL_CORE_EXPORTED
       debop(PL_op);
+# endif
       PerlIO_printf(Perl_debug_log, "Counted %d for %s\n", 
 		    opcount[PL_op->op_type]+1, PL_op_name[PL_op->op_type]);
     }
+#endif
   }
 
   DEBUG_v(Perl_deb(aTHX_ "Entering new RUNOPS level (B::Stats)\n"));
@@ -59,8 +77,7 @@ my_runops(pTHX)
 		      "WARNING: %"UVxf" changed from %"UVxf" to %"UVxf"\n",
 		      PTR2UV(PL_watchaddr), PTR2UV(PL_watchok),
 		      PTR2UV(*PL_watchaddr));
-#if defined(DEBUGGING) \
-   && !(defined(_WIN32) || (defined(__CYGWIN__) && (__GNUC__ > 3)) || defined(AIX))
+#if !defined(DISABLE_PERL_CORE_EXPORTED) && defined(DEBUGGING)
 # if (PERL_VERSION > 7)
       if (DEBUG_s_TEST_) debstack();
       if (DEBUG_t_TEST_) debop(PL_op);

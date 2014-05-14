@@ -1,4 +1,5 @@
 *~
+META.yml
 MYMETA.json
 MYMETA.yml
 MANIFEST.files
@@ -7,9 +8,13 @@ Makefile.old
 Stats.bs
 Stats.c
 Stats.o
+Stats.obj
+Stats.def
+*.pdb
 blib/
 pm_to_blib
 lib/B/Stats/Minus.pm
+lib/B/Stats/Minus.pm.tmpl
 log.*
 Debian_CPANTS.txt
 B-Stats-*.tar.gz

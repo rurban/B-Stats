@@ -9,8 +9,8 @@ my $X = $^X =~ m/\s/ ? qq{"$^X"} : $^X;
 my $redir = $^O eq 'MSWin32' ? '' : '2>&1';
 
 diag "compare B::Terse with B::Stats";
-my $t = `$X -Mblib -MO=-qq,Terse -e"print 1 for (1..3)" | $X -anl -e'print \$F[2]'`;
-my $c = `$X -Mblib -MO=-qq,Stats,-u -e'print 1 for (1..3)' $redir`;
+my $t = `$X -Mblib -MO=-qq,Terse -e"print 1 for (1..3)" | $X -anl -e"print \$F[2]"`;
+my $c = `$X -Mblib -MO=-qq,Stats,-u -e"print 1 for (1..3)" $redir`;
 my (%t, %c, $ok);
 my @lines = split(/\n/,$t);
 my $ops = scalar(@lines);
