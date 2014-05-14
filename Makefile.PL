@@ -32,6 +32,8 @@ WriteMakefile(%WriteMakefileArgs);
 sub MY::depend {
   "
 lib/B/Stats/Minus.pm : Makefile c_minus
+	\$(TOUCH) \$@
+	\$(MAKE) pm_to_blib
 	\$(FULLPERL) c_minus
 
 README : lib/B/Stats.pm

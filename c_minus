@@ -6,11 +6,11 @@ use File::Spec;
 use Config;
 my $lib = File::Spec->catfile(qw(lib B Stats Minus.pm));
 my $X = $^X =~ m/\s/ ? qq{"$^X"} : $^X; 
-my $redir = ($^O eq 'MSWin32') ? '' : '2>&1';
+my $redir = '2>&1';
 
 # -qq not with 5.6
-my $t = `$X -Mblib -MO=-qq,Terse -e1 | $X -anl -e"print \$F[2]"`;
-my $c = `$X -Mblib -MB::Stats=-u -e1 $redir`;
+my $t = `$X -Iblib/arch -Iblib/lib -MO=-qq,Terse -e1 | $X -anl -e"print \$F[2]"`;
+my $c = `$X -Iblib/arch -Iblib/lib -MB::Stats=-u -e1 $redir`;
 
 my (%t, %c);
 my $t_ops = scalar split(/\n/,$t);
