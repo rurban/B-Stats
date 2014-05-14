@@ -1,5 +1,5 @@
 package B::Stats;
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 # TODO
 # exact: probably use Opcodes and DynaLoader at BEGIN for c_minus.
@@ -238,7 +238,8 @@ sub _walksymtable {
     my ($sym, $ref, $fullname);
     no strict 'refs';
     $prefix = '' unless defined $prefix;
-    while (($sym, $ref) = each %$symref) {
+    foreach my $sym (keys %$symref) {
+        my $ref = $symref->{$sym};
         $fullname = "*main::".$prefix.$sym;
 	if ($sym =~ /::$/) {
 	    $sym = $prefix . $sym;

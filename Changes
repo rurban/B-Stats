@@ -1,5 +1,10 @@
 -*- change-log -*-
 
+0.06	2014-05-13 rurban
+	* Win32 fixes by bulk88
+	* stabilize B::Stats::Minus creation
+	* replace each in walksymtable by foreach
+
 0.05	2012-05-02 rurban
 	* protect against empty B::Stats::Minus::overhead key warnings,
 	when more op types are loaded at END than at COMPILE time.
