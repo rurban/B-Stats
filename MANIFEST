@@ -1,4 +1,5 @@
 .gitignore
+blog.txt
 c_minus
 lib/B/Stats.pm
 lib/B/Stats/Minus.pm
@@ -11,4 +12,3 @@ Makefile.PL
 MANIFEST
 README
 Stats.xs
-META.yml                                 Module meta-data (added by MakeMaker)
