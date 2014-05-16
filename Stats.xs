@@ -3,6 +3,96 @@
 #include "perl.h"
 #include "XSUB.h"
 
+#ifdef I_SYS_TIME
+#include <sys/time.h>
+#endif
+
+/* time tracking */
+#ifdef WIN32
+/* win32_gettimeofday has ~15 ms resolution on Win32, so use
+ * QueryPerformanceCounter which has us or ns resolution depending on
+ * motherboard and OS. Comment this out to use the old clock.
+ */
+#  define HAS_QPC
+#endif
+
+#ifdef HAS_CLOCK_GETTIME
+/* http://www.freebsd.org/cgi/man.cgi?query=clock_gettime
+ * http://webnews.giga.net.tw/article//mailing.freebsd.performance/710
+ * http://sean.chittenden.org/news/2008/06/01/
+ * Explanation of why gettimeofday() (and presumably CLOCK_REALTIME) may go backwards:
+ * http://groups.google.com/group/comp.os.linux.development.apps/tree/browse_frm/thread/dc29071f2417f75f/ac44671fdb35f6db?rnum=1&_done=%2Fgroup%2Fcomp.os.linux.development.apps%2Fbrowse_frm%2Fthread%2Fdc29071f2417f75f%2Fc46264dba0863463%3Flnk%3Dst%26rnum%3D1%26#doc_776f910824bdbee8
+ */
+typedef struct timespec time_of_day_t;
+#  define CLOCK_GETTIME(ts) clock_gettime(profile_clock, ts)
+#  define TICKS_PER_SEC 10000000                /* 10 million - 100ns */
+#  define get_time_of_day(into) CLOCK_GETTIME(&into)
+#  define get_ticks_between(typ, s, e, ticks, overflow) STMT_START { \
+    overflow = 0; \
+    ticks = ((e.tv_sec - s.tv_sec) * TICKS_PER_SEC + (e.tv_nsec / (typ)100) - (s.tv_nsec / (typ)100)); \
+} STMT_END
+
+#else                                             /* !HAS_CLOCK_GETTIME */
+
+#ifdef HAS_MACH_TIME
+
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+mach_timebase_info_data_t  our_timebase;
+typedef uint64_t time_of_day_t;
+#  define TICKS_PER_SEC 10000000                /* 10 million - 100ns */
+#  define get_time_of_day(into) into = mach_absolute_time()
+#  define get_ticks_between(typ, s, e, ticks, overflow) STMT_START { \
+    overflow = 0; \
+    if( our_timebase.denom == 0 ) mach_timebase_info(&our_timebase); \
+    ticks = (e-s) * our_timebase.numer / our_timebase.denom / (typ)100; \
+} STMT_END
+
+#else                                             /* !HAS_MACH_TIME */
+
+#ifdef HAS_QPC
+
+unsigned __int64 time_frequency = 0ui64;
+typedef unsigned __int64 time_of_day_t;
+#  define TICKS_PER_SEC time_frequency
+#  define get_time_of_day(into) QueryPerformanceCounter((LARGE_INTEGER*)&into)
+#  define get_ticks_between(typ, s, e, ticks, overflow) STMT_START { \
+    overflow = 0; /* XXX whats this? */ \
+    ticks = (e-s); \
+} STMT_END
+
+#elif defined(HAS_GETTIMEOFDAY)
+/* on Win32 gettimeofday is always implimented in Perl, not the MS C lib, so
+   either we use PerlProc_gettimeofday or win32_gettimeofday, depending on the
+   Perl defines about NO_XSLOCKS and PERL_IMPLICIT_SYS, to simplify logic,
+   we don't check the defines, just the macro symbol to see if it forwards to
+   presumably the iperlsys.h vtable call or not */
+#if defined(WIN32) && !defined(gettimeofday)
+#  define gettimeofday win32_gettimeofday
+#endif
+typedef struct timeval time_of_day_t;
+#  define TICKS_PER_SEC 1000000                 /* 1 million */
+#  define get_time_of_day(into) gettimeofday(&into, NULL)
+#  define get_ticks_between(typ, s, e, ticks, overflow) STMT_START { \
+    overflow = 0; \
+    ticks = ((e.tv_sec - s.tv_sec) * TICKS_PER_SEC + e.tv_usec - s.tv_usec); \
+} STMT_END
+
+#else
+
+static int (*u2time)(pTHX_ UV *) = 0;
+typedef UV time_of_day_t[2];
+#  define TICKS_PER_SEC 1000000                 /* 1 million */
+#  define get_time_of_day(into) (*u2time)(aTHX_ into)
+#  define get_ticks_between(typ, s, e, ticks, overflow)  STMT_START { \
+    overflow = 0; \
+    ticks = ((e[0] - s[0]) * (typ)TICKS_PER_SEC + e[1] - s[1]); \
+} STMT_END
+
+#endif
+#endif
+#endif
+
 /* CPAN #28912: MSWin32 and AIX as only platforms do not export PERL_CORE functions,
    such as Perl_debop
    so disable this feature. cygwin gcc-3 --export-all-symbols was non-strict, gcc-4 is.
@@ -17,6 +107,7 @@
 #endif
 
 STATIC U32 opcount[MAXO];
+STATIC time_of_day_t optimes[MAXO];
 
 /* From B::C */
 STATIC int
@@ -146,9 +237,9 @@ _xs_collect_env()
 
 void
 END(...)
-  PREINIT:
+PREINIT:
     SV * sv;
-  PPCODE:
+PPCODE:
     PUSHMARK(SP);
     PUSHs(sv_2mortal(rcount_all(aTHX)));
     PUTBACK;
@@ -157,7 +248,7 @@ END(...)
 
 void
 INIT(...)
-  PPCODE:
+PPCODE:
     PUTBACK;
     reset_rcount();
     return; /* skip implicity PUTBACK */

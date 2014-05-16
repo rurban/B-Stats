@@ -351,6 +351,10 @@ sub output_runtime {
   $r_count = {};
   my $r_countarr = $_[0];
 
+  #require DynaLoader;
+  #our @ISA = ('DynaLoader');
+  #DynaLoader::bootstrap('B::Stats', $VERSION);
+
   require Opcodes;
   my $maxo = Opcodes::opcodes();
   # @optype only since 5.8.9 in B
@@ -449,8 +453,6 @@ This module is available under the same licences as perl, the Artistic
 license and the GPL.
 
 =head1 SEE ALSO
-
-
 
 =cut
 
