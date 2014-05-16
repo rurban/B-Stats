@@ -339,17 +339,14 @@ Prepares count hash from the runtime generated structure in XS and calls output(
 
 sub output_runtime {
   $r_count = {};
-
-  require DynaLoader;
-  our @ISA = ('DynaLoader');
-  DynaLoader::bootstrap('B::Stats', $VERSION);
+  my $r_countarr = $_[0];
 
   require Opcodes;
   my $maxo = Opcodes::opcodes();
   # @optype only since 5.8.9 in B
   my @optype = qw(OP UNOP BINOP LOGOP LISTOP PMOP SVOP PADOP PVOP LOOP COP);
   for my $i (0..$maxo-1) {
-    if (my $count = rcount($i)) {
+    if (my $count = $r_countarr->[$i]) {
       my $name = Opcodes::opname($i);
       if ($name) {
 	my $class = $optype[ Opcodes::opclass($i) ];
@@ -418,7 +415,7 @@ CHECK {
   compile->() if !$compiled and $opt{c};
 }
 
-END {
+sub _end { #void _end($refToArrOfRuntimeCounts)
   $c_count = $static;
   if ($opt{e}) {
     $nops = 0;
@@ -427,10 +424,11 @@ END {
     output($static, $nops, 'static end-time');
     $e_count = $static;
   }
-  output_runtime() if $opt{r};
+  output_runtime($_[0]) if $opt{r};
   if ( $opt{t} and ($] < 5.014 or ${^GLOBAL_PHASE} ne 'DESTRUCT') ) {
     output_table($c_count, $e_count, $r_count);
   }
 }
 
+XSLoader::load 'B::Stats', $VERSION;
 1;
