@@ -53,18 +53,6 @@ my_runops(pTHX)
     ignore = stash == ign_stash;
   }
 #endif
-  if (!ignore) {
-    opcount[PL_op->op_type]++;
-#ifdef DEBUGGING
-    if (DEBUG_v_TEST_) {
-# ifndef DISABLE_PERL_CORE_EXPORTED
-      debop(PL_op);
-# endif
-      PerlIO_printf(Perl_debug_log, "Counted %d for %s\n", 
-		    opcount[PL_op->op_type]+1, PL_op_name[PL_op->op_type]);
-    }
-#endif
-  }
 
   DEBUG_v(Perl_deb(aTHX_ "Entering new RUNOPS level (B::Stats)\n"));
   do {
@@ -87,11 +75,46 @@ my_runops(pTHX)
 # endif
 #endif
     }
+  if (!ignore) {
+    opcount[PL_op->op_type]++;
+#ifdef DEBUGGING
+    if (DEBUG_v_TEST_) {
+# ifndef DISABLE_PERL_CORE_EXPORTED
+      debop(PL_op);
+# endif
+      PerlIO_printf(Perl_debug_log, "Counted %d for %s\n",
+		    opcount[PL_op->op_type]+1, PL_op_name[PL_op->op_type]);
+    }
+#endif
+  }
   } while ((PL_op = CALL_FPTR(PL_op->op_ppaddr)(aTHX)));
   DEBUG_v(Perl_deb(aTHX_ "leaving RUNOPS level (B::Stats)\n"));
 
   TAINT_NOT;
   return 0;
+}
+
+void
+reset_rcount() {
+#if 1
+  memset(opcount, 0, sizeof(opcount));
+#else
+  register int i;
+  for (i=0; i < MAXO; i++) {
+    opcount[i] = 0;
+  }
+#endif
+}
+/* returns an SV ref to AV with caller now owning the SV ref */
+SV *
+rcount_all(pTHX) {
+  AV * av;
+  int i;
+  av = newAV();
+  for (i=0; i < MAXO; i++) {
+    av_store(av, i, newSViv(opcount[i]));
+  }
+  return newRV_noinc((SV*)av);
 }
 
 MODULE = B::Stats  PACKAGE = B::Stats
@@ -106,6 +129,14 @@ rcount(opcode)
   OUTPUT:
 	RETVAL
 
+SV *
+rcount_all()
+  C_ARGS:
+    aTHX
+
+void
+reset_rcount()
+
 void
 _xs_collect_env()
   CODE:
@@ -113,15 +144,26 @@ _xs_collect_env()
 	   to be able to detect if our testfunc loads B and its 14 deps itself.
 	 */
 
+void
+END(...)
+  PREINIT:
+    SV * sv;
+  PPCODE:
+    PUSHMARK(SP);
+    PUSHs(sv_2mortal(rcount_all(aTHX)));
+    PUTBACK;
+    call_pv("B::Stats::_end", G_VOID);
+    return; /* skip implicity PUTBACK */
+
+void
+INIT(...)
+  PPCODE:
+    PUTBACK;
+    reset_rcount();
+    return; /* skip implicity PUTBACK */
+
 BOOT:
 {
-#if 1
-  memset(opcount, 0, sizeof(opcount[MAXO]));
-#else
-  register int i;
-  for (i=0; i < MAXO; i++) {
-    opcount[i] = 0;
-  }
-#endif
+  reset_rcount();
   PL_runops = my_runops;
 }

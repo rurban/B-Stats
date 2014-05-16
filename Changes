@@ -1,5 +1,9 @@
 -*- change-log -*-
 
+0.0?	2014-?-? ?
+	* fix runtime stats (-r) to be meaningful/accurate, statistic was
+	uselessly broken before
+
 0.06	2014-05-13 rurban
 	* Win32 fixes by bulk88
 	* stabilize B::Stats::Minus creation
