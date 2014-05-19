@@ -3,6 +3,7 @@ blog.txt
 c_minus
 lib/B/Stats.pm
 lib/B/Stats/Minus.pm
+speed.md
 t/compile.t
 t/options.t
 t/table.t
