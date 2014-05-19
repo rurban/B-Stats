@@ -1,8 +1,9 @@
 -*- change-log -*-
 
-0.0?	2014-?-? ?
-	* fix runtime stats (-r) to be meaningful/accurate, statistic was
-	uselessly broken before
+0.07	2014-05-19 rurban
+	* fix runtime stats (-r) to be meaningful/accurate, fixed various bugs (bulk88)
+        * fixed initially computed B::Stats::Minus (windows quoting issue)
+        * document new functions rcount_all() and reset_rcount()
 
 0.06	2014-05-13 rurban
 	* Win32 fixes by bulk88

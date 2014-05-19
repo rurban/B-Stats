@@ -8,13 +8,27 @@ my $lib = File::Spec->catfile(qw(lib B Stats Minus.pm));
 my $X = $^X =~ m/\s/ ? qq{"$^X"} : $^X; 
 my $redir = '2>&1';
 
-# -qq not with 5.6
-my $t = `$X -Iblib/arch -Iblib/lib -MO=-qq,Terse -e1 | $X -anl -e"print \$F[2]"`;
 my $c = `$X -Iblib/arch -Iblib/lib -MB::Stats=-u -e1 $redir`;
+my $cE = `$X -Iblib/arch -Iblib/lib -MB::Stats=-u -E1 $redir`;
+my (%c);
 
-my (%t, %c);
-my $t_ops = scalar split(/\n/,$t);
-$t{$_}++ for split/\n/,$t;
+sub gen_test {
+  my %t;
+  for (@_) {
+    s/^\s+//g;
+    my @F = split/\s+/;
+    $t{$F[2]}++ if $F[2];
+  }
+  return \%t;
+}
+
+my $cmd = qq{$X -MO=-qq,Terse -e1};
+$cmd =~ s/-qq,// if $] < 5.007;
+my $t   = gen_test(`$cmd`);
+
+$cmd = qq{$X -MO=-qq,Terse,-stash=feature -e"require feature; feature->import"};
+$cmd =~ s/-qq,// if $] < 5.007;
+my $tE  = gen_test(`$cmd`);
 
 my $key = 'c';
 for (split/\n/,$c) {
@@ -31,10 +45,30 @@ for (split/\n/,$c) {
   }
   $c{$key}{$op} = 0+$n if $op and $n;
 }
+$key = 'C';
+for (split/\n/,$cE) {
+  $key = 'E' if /B::Stats static end-time:/;
+  $key = 'R' if /B::Stats dynamic run-time:/;
+  my($op,$n) = split/\s+/ unless /^(B::Stats|op name|files=)/;
+  if (/^files=/) {
+    for (split/\s+/) {
+      if (/(files|ops|lines)=(\d+)/) {
+	$c{$key}{"_$1"} = 0+$2;
+      }
+    }
+    next;
+  }
+  $c{$key}{$op} = 0+$n if $op and $n;
+}
 
-for (keys %t) { # nextstate null enter leave w/o sitecustomize
+for (keys %$t) { # nextstate null enter leave w/o sitecustomize
   for my $key (qw(c e r)) {
-    $c{$key}{$_} -= $t{$_} if $c{$key}{$_};
+    $c{$key}{$_} -= $t->{$_} if $c{$key}{$_};
+  }
+}
+for (keys %$tE) { # with features
+  for my $key (qw(C E R)) {
+    $c{$key}{$_} -= $tE->{$_} if $c{$key}{$_};
   }
 }
 
@@ -45,9 +79,12 @@ print P "package B::Stats::Minus;
 # Install-time generated data, to calculate the B::Stats overhead.
 #   c includes B with its 14 dependencies
 #   e adds Opcodes
+#   UPPERCASE for -E (features overhead)
 ";
-print P Data::Dumper->Dump([\%c, \%t], [qw(overhead test)]);
-print P "# \$test from -e1
+print P Data::Dumper->Dump([\%c, $t, $tE], [qw(overhead test test_E)]);
+print P "# \$test for -e1
+";
+print P "# \$test_E for -E1
 ";
 print P "1;
 ";

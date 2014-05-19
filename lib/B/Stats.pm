@@ -1,9 +1,10 @@
 package B::Stats;
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 # TODO
 # exact: probably use Opcodes and DynaLoader at BEGIN for c_minus.
 # less overhead: do more in XS: _class, _count_op, _walkoptree_simple, _walksymtable
+# detect -E usage, features overhead
 
 =head1 NAME
 
@@ -271,9 +272,17 @@ sub compile {
   }
 }
 
-=item rcount (opcode)
+=item rcount ($opcode)
 
 Returns run-time count per op type.
+
+=item rcount_all()
+
+Returns an AV ref for all opcounts, indexed by opcode.
+
+=item reset_rcount()
+
+Resets to opcount array for all ops to 0
 
 =item output ($count-hash, $ops, $name)
 
@@ -429,6 +438,17 @@ sub _end { #void _end($refToArrOfRuntimeCounts)
     output_table($c_count, $e_count, $r_count);
   }
 }
+
+=head1 LICENSE
+
+This module is available under the same licences as perl, the Artistic
+license and the GPL.
+
+=head1 SEE ALSO
+
+
+
+=cut
 
 XSLoader::load 'B::Stats', $VERSION;
 1;
