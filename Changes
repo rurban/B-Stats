@@ -1,5 +1,11 @@
 -*- change-log -*-
 
+0.08	2014-
+	* change -fOP to -fBASEOP, -fPVOP to -fPVOP_OR_SVOP for consistency
+	* add 3 missing op classes BASEOP_OR_UNOP FILESTATOP LOOPEXOP
+	  (thanks bulk88 for issue #5)
+	* print error on -t,-r, i.e. without -c and -e stats
+
 0.07	2014-05-19 rurban
 	* fix runtime stats (-r) to be meaningful/accurate, fixed various bugs (bulk88)
         * fixed initially computed B::Stats::Minus (windows quoting issue)

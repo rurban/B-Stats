@@ -1,5 +1,5 @@
 package B::Stats;
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 # TODO
 # exact: probably use Opcodes and DynaLoader at BEGIN for c_minus.
@@ -127,8 +127,9 @@ sub import {
     # taking multiple arguments: -ffilter
     if (/^-?f(.*)$/) {
       my $arg = $1;
-      if ($arg =~ /^[A-Z]*OP$/) {
-	my @optype = qw(OP UNOP BINOP LOGOP LISTOP PMOP SVOP PADOP PVOP LOOP COP);
+      if ($arg =~ /^[A-Z_]*OP$/) {
+        my @optype = qw(BASEOP UNOP BINOP LOGOP LISTOP PMOP SVOP PADOP PVOP_OR_SVOP
+                        LOOP COP BASEOP_OR_UNOP FILESTATOP LOOPEXOP);
 	$opt{f}->{class}->{$arg} = 1;
 	die "invalid B::Stats,-fOPCLASS argument: $arg\n"
 	  unless grep {$arg eq $_} @optype;
@@ -353,7 +354,8 @@ sub output_runtime {
   require Opcodes;
   my $maxo = Opcodes::opcodes();
   # @optype only since 5.8.9 in B
-  my @optype = qw(OP UNOP BINOP LOGOP LISTOP PMOP SVOP PADOP PVOP LOOP COP);
+  my @optype = qw(BASEOP UNOP BINOP LOGOP LISTOP PMOP SVOP PADOP PVOP_OR_SVOP
+                  LOOP COP BASEOP_OR_UNOP FILESTATOP LOOPEXOP);
   for my $i (0..$maxo-1) {
     if (my $count = $r_countarr->[$i]) {
       my $name = Opcodes::opname($i);
@@ -376,6 +378,8 @@ sub output_runtime {
 
 -t formatter
 
+Does not work together with -r
+
 =cut
 
 sub _output_tline {
@@ -391,18 +395,18 @@ sub _output_tline {
 }
 
 sub output_table {
-  my ($c, $e, $r) = @_;
   # XXX we have empty runops runs with format.
   #my $x = 0;
   #for (keys %{$r_count->{name}}) {
   #  $x++ if $r_count->{name}->{$_};
   #}
   #return unless $x;
-  print "
+  print $LOG "
 B::Stats table:
            	-c	-e	-r
 ";
-  if (%$e_count) {
+  warn "Cannot use -t with -r only\n" if !$opt{c} and !$opt{e};
+  if ($e_count and %$e_count) {
     for (sort { $e_count->{name}->{$b} <=> $e_count->{name}->{$a} }
          keys %{$e_count->{name}}) {
       _output_tline($_);
@@ -435,7 +439,7 @@ sub _end { #void _end($refToArrOfRuntimeCounts)
   }
   output_runtime($_[0]) if $opt{r};
   if ( $opt{t} and ($] < 5.014 or ${^GLOBAL_PHASE} ne 'DESTRUCT') ) {
-    output_table($c_count, $e_count, $r_count);
+    output_table;
   }
 }
 
