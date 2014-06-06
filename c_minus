@@ -3,10 +3,18 @@
 # TODO: add -f w/o sitecustomize
 #       if $Config{usesitecustomize}
 use File::Spec;
+use File::Copy;
 use Config;
 my $lib = File::Spec->catfile(qw(lib B Stats Minus.pm));
 my $X = $^X =~ m/\s/ ? qq{"$^X"} : $^X; 
 my $redir = '2>&1';
+
+# initialize from scratch
+open P,">",$lib or die;
+print P "package B::Stats::Minus;
+1";
+close P;
+File::Copy::cp($lib, File::Spec->catfile(qw(blib lib B Stats Minus.pm)));
 
 my $c = `$X -Iblib/arch -Iblib/lib -MB::Stats=-u -e1 $redir`;
 my $cE = `$X -Iblib/arch -Iblib/lib -MB::Stats=-u -E1 $redir`;
@@ -81,6 +89,7 @@ print P "package B::Stats::Minus;
 #   e adds Opcodes
 #   UPPERCASE for -E (features overhead)
 ";
+$Data::Dumper::Sortkeys = 1;
 print P Data::Dumper->Dump([\%c, $t, $tE], [qw(overhead test test_E)]);
 print P "# \$test for -e1
 ";

@@ -25,6 +25,6 @@ like( $c, qr/^B::Stats dynamic run-time:/m,    "-MB::Stats=-t,-u => r" );
 unlike( $c, qr/^op class:/m,                   "-MB::Stats,-t,-u => u" );
 like( $c, qr/^B::Stats table:/m,               "-MB::Stats,-t,-u => t" );
 
-unlike( $c, qr/^nextstate\s+[1-9]\d+$/m, "nextstate in -c" );
-like  ( $c, qr/^nextstate\s+[1-9]\d+\s+[1-9]\d+/m, "nextstate in table (c+e)" );
-like  ( $c, qr/^nextstate\s+[1-9]\d*\s+[1-9]\d*\s+[1-9]\d*/m, "nextstate in table (c+e+r)" );
+like( $c, qr/^nextstate\s+[1-9]\d+\s*$/m, "nextstate only in -c" );
+unlike( $c, qr/^nextstate\s+[1-9]\d+\s+[1-9]\d+/m, "no nextstate in table (e)" );
+unlike( $c, qr/^nextstate\s+[1-9]\d*\s+[1-9]\d*\s+[1-9]\d*/m, "no nextstate in table (r)" );
