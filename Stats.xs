@@ -15,6 +15,9 @@
    (defined(__CYGWIN__) && (__GNUC__ > 3)) || defined(AIX))
 # define DISABLE_PERL_CORE_EXPORTED
 #endif
+#if PERL_VERSION < 7
+# define DEBUG_v(x) DEBUG_t(x)
+#endif
 
 STATIC U32 opcount[MAXO];
 
@@ -75,18 +78,18 @@ my_runops(pTHX)
 # endif
 #endif
     }
-  if (!ignore) {
-    opcount[PL_op->op_type]++;
-#ifdef DEBUGGING
-    if (DEBUG_v_TEST_) {
+    if (!ignore) {
+      opcount[PL_op->op_type]++;
+#if defined(DEBUGGING) && PERL_VERSION > 7
+      if (DEBUG_v_TEST_) {
 # ifndef DISABLE_PERL_CORE_EXPORTED
-      debop(PL_op);
+        debop(PL_op);
 # endif
-      PerlIO_printf(Perl_debug_log, "Counted %d for %s\n",
-		    opcount[PL_op->op_type]+1, PL_op_name[PL_op->op_type]);
-    }
+        PerlIO_printf(Perl_debug_log, "Counted %d for %s\n",
+		      opcount[PL_op->op_type]+1, PL_op_name[PL_op->op_type]);
+      }
 #endif
-  }
+    }
   } while ((PL_op = CALL_FPTR(PL_op->op_ppaddr)(aTHX)));
   DEBUG_v(Perl_deb(aTHX_ "leaving RUNOPS level (B::Stats)\n"));
 
