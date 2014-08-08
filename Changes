@@ -1,8 +1,9 @@
 -*- change-log -*-
 
-0.09	2014-06-09 rurban
+0.09	2014-08-08 rurban
 	* fix Stats.xs for 5.6. no -Dv on 5.6, combine with -Dt instead
 	* fix c_minus for 5.6. Needed to seperate $t Dump.
+	* add missing Changes to MANIFEST
 
 0.08	2014-06-06 rurban
 	* fix overhead subtraction, and count OPCLASS at the end

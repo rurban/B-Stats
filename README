@@ -18,6 +18,8 @@ DESCRIPTION
         no bloat;
 
 OPTIONS
+    Options can be bundled: "-c,-e,-r" eq "-cer"
+
     -c *static*
         Do static analysis at compile-time. This does not include all
         run-time require packages. Invocation via -MO=Stats does this
@@ -32,8 +34,7 @@ OPTIONS
         a profiler. Single ops can be called multiple times.
 
     -a *all (default)*
-        Same as -c,-e,-r: static compile-time and end-time and dynamic
-        run-time.
+        Same as -cer: static compile-time, end-time and dynamic run-time.
 
     -t *table*
         Tabular list of -c, -e and -r results.
@@ -55,17 +56,25 @@ OPTIONS
         Filter for op names and classes. Only calculate the given ops, resp.
         op class.
 
-          perl -MB::Stats,-fLOGOP,COP,concat myprog.pl
+          perl -MB::Stats,-fLOGOP,-fCOP,-fconcat myprog.pl
 
-    -llogfile NOT YET
+    -llogfile
         Print output only to this file. Default: STDERR
+
+          perl -MB::Stats,-llog myprog.pl
 
 METHODS
     compile
         Static -c check at CHECK time. Triggered by -MO=Stats,-OPTS
 
-    rcount (opcode)
+    rcount ($opcode)
         Returns run-time count per op type.
+
+    rcount_all()
+        Returns an AV ref for all opcounts, indexed by opcode.
+
+    reset_rcount()
+        Resets to opcount array for all ops to 0
 
     output ($count-hash, $ops, $name)
         General formatter
@@ -73,9 +82,16 @@ METHODS
     output_runtime
         -r formatter.
 
-        Prepares count hash from @runtime array generated in XS and calls
-        output
+        Prepares count hash from the runtime generated structure in XS and
+        calls output().
 
     output_table
         -t formatter
 
+        Does not work together with -r
+
+LICENSE
+    This module is available under the same licences as perl, the Artistic
+    license and the GPL.
+
+SEE ALSO

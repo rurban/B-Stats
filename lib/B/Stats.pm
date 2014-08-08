@@ -1,5 +1,5 @@
 package B::Stats;
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 # TODO
 # exact: probably use Opcodes and DynaLoader at BEGIN for c_minus.
