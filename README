@@ -33,6 +33,10 @@ OPTIONS
         Do dynamic run-time analysis of all actually visited ops, similar to
         a profiler. Single ops can be called multiple times.
 
+        Warning: Since perl v5.31.9 the -r option requires Opcodes to be
+        pre-loaded. If this is not possible, it does not work anymore and is
+        disabled.
+
     -a *all (default)*
         Same as -cer: static compile-time, end-time and dynamic run-time.
 

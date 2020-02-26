@@ -38,6 +38,12 @@ lib/B/Stats/Minus.pm : Makefile c_minus
 
 README : lib/B/Stats.pm
 	pod2text lib/B/Stats.pm > README
+
+release : test dist
+	-git tag -f \$(VERSION)
+	cpan-upload \$(DISTVNAME).tar\$(SUFFIX)
+	git push
+	git push --tags
 ";
 }
 
