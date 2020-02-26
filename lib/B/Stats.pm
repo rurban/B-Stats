@@ -1,5 +1,6 @@
 package B::Stats;
-our $VERSION = '0.09';
+use strict;
+our $VERSION = '0.10';
 
 # TODO
 # exact: probably use Opcodes and DynaLoader at BEGIN for c_minus.
@@ -49,6 +50,9 @@ This calculates the heap space for the optree.
 Do dynamic run-time analysis of all actually visited ops, similar to a profiler.
 Single ops can be called multiple times.
 
+Warning: Since perl v5.31.9 the -r option requires Opcodes to be pre-loaded.
+If this is not possible, it does not work anymore and is disabled.
+
 =item -a I<all (default)>
 
 Same as -cer: static compile-time, end-time and dynamic run-time.
@@ -96,7 +100,6 @@ Print output only to this file. Default: STDERR
 our (%B_inc, %B_env);
 BEGIN { %B_inc = %INC; }
 
-use strict;
 # B includes 14 files and 3821 lines. overhead subtracted with B::Stats::Minus
 use B;
 use B::Stats::Minus;
@@ -134,15 +137,17 @@ sub import {
 	die "invalid B::Stats,-fOPCLASS argument: $arg\n"
 	  unless grep {$arg eq $_} @optype;
 	# pre-expand names for the class
-	require Opcodes;
-	my $maxo = Opcodes::opcodes();
-	for my $i (0..$maxo-1) {
-	  my $name = Opcodes::opname($i);
-	  my $class = $optype[ Opcodes::opclass($i) ];
-	  if ($class eq $arg) {
-	    $opt{f}->{name}->{$name} = 1;
-	  }
-	}
+  # RT #131963, too late to reload Opcodes
+  unless (${^GLOBAL_PHASE} eq 'END' and $] >= 5.031009 and !defined(\&Opcodes::opcodes)) {
+    my $maxo = Opcodes::opcodes();
+    for my $i (0..$maxo-1) {
+      my $name = Opcodes::opname($i);
+      my $class = $optype[ Opcodes::opclass($i) ];
+      if ($class eq $arg) {
+        $opt{f}->{name}->{$name} = 1;
+      }
+    }
+  }
       } elsif ($arg =~ /^[a-z_]+$/) {
 	$opt{f}->{name}->{$arg} = 1;
       } else {
@@ -334,7 +339,13 @@ sub output {
   unless ($opt{u}) {
     print $LOG "\nop class:\n";
 
+    #warn "before \$INC{Opcodes.pm}: ",$INC{'Opcodes.pm'}, ${^GLOBAL_PHASE};
+    # RT #131963, too late to reload Opcodes
+    if ($] >= 5.031009 && ${^GLOBAL_PHASE} eq 'END') {
+      return $count;
+    }
     require Opcodes;
+    #warn "after \$INC{Opcodes.pm}: ",$INC{'Opcodes.pm'};
     my $maxo = Opcodes::opcodes();
     my @optype = qw(BASEOP UNOP BINOP LOGOP LISTOP PMOP SVOP PADOP PVOP_OR_SVOP
                     LOOP COP BASEOP_OR_UNOP FILESTATOP LOOPEXOP);
@@ -375,6 +386,10 @@ sub output_runtime {
   #require DynaLoader;
   #our @ISA = ('DynaLoader');
   #DynaLoader::bootstrap('B::Stats', $VERSION);
+  # RT #131963, too late to load Opcodes
+  if ($] >= 5.031009 && ${^GLOBAL_PHASE} eq 'END' && !defined(\&Opcodes::opcodes)) {
+    return;
+  }
   require Opcodes;
   my $maxo = Opcodes::opcodes();
   # @optype only since 5.8.9 in B

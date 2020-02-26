@@ -18,8 +18,8 @@ like( $c, qr/^nextstate\s+[1-9]\d+$/m, "nextstate > 0" );
 
 $c = qx{ $X -Iblib/arch -Iblib/lib -MB::Stats=-r,-u t/test.pl $redir };
 unlike( $c, qr/^B::Stats static compile-time:/m, "-MB::Stats=-c,-u => !c" );
-unlike( $c, qr/^B::Stats static end-time:/m,   "-MB::Stats=-c,-u => !e" );
-like( $c, qr/^B::Stats dynamic run-time:/m,    "-MB::Stats -r" );
+unlike( $c, qr/^B::Stats static end-time:/m,     "-MB::Stats=-c,-u => !e" );
+like( $c, qr/^B::Stats dynamic run-time:/m,  "-MB::Stats -r" );
 
 # O:
 $c = qx{ $X -Iblib/arch -Iblib/lib -MO=Stats,-c,-u t/test.pl $redir };
